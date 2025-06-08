@@ -24,11 +24,12 @@ export default function UsuariosPage() {
   return (
     <Container>
       <Typography variant="h4" gutterBottom>Usuarios</Typography>
-      <Paper>
-        <Table>
+      <Paper sx={{ width: '100%', overflowX: 'auto' }}>
+        <Table sx={{ minWidth: 800 }}>
           <TableHead>
             <TableRow>
               <TableCell>Usuario</TableCell>
+              <TableCell>Password</TableCell>
               <TableCell>Nombre</TableCell>
               <TableCell>Teléfono</TableCell>
               <TableCell>Tipo</TableCell>
@@ -38,6 +39,7 @@ export default function UsuariosPage() {
               {users.map(u => (
                 <TableRow key={u._id}>
                   <TableCell>{u.username}</TableCell>
+                  <TableCell>{u.password}</TableCell>
                   <TableCell>{u.name}</TableCell>
                   <TableCell>{u.phoneNum}</TableCell>
                   <TableCell>{u.userType}</TableCell>

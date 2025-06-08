@@ -46,6 +46,15 @@ app.get('/api/users', async (req, res) => {
 
 app.post('/api/users', async (req, res) => {
   try {
+    const { username, phoneNum } = req.body;
+    const existing = await User.findOne({
+      $or: [{ username }, { phoneNum }]
+    });
+    if (existing) {
+      return res
+        .status(400)
+        .json({ message: 'Usuario o teléfono ya existe' });
+    }
     const newUser = await User.create(req.body);
     res.status(201).json(newUser);
   } catch (err) {
