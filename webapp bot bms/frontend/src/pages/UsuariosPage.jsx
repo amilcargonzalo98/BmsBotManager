@@ -8,7 +8,7 @@ import {
 
 export default function UsuariosPage() {
   const [users, setUsers] = useState([]);
-  const [newUser, setNewUser] = useState({ id: '', nombre: '', numeroTelefono: '', tipoUsuario: '' });
+  const [newUser, setNewUser] = useState({ username: '', password: '', name: '', phoneNum: '', userType: '' });
 
   useEffect(() => {
     fetchUsers().then(res => setUsers(res.data));
@@ -18,7 +18,7 @@ export default function UsuariosPage() {
     await createUser(newUser);
     const { data } = await fetchUsers();
     setUsers(data);
-    setNewUser({ id: '', nombre: '', numeroTelefono: '', tipoUsuario: '' });
+    setNewUser({ username: '', password: '', name: '', phoneNum: '', userType: '' });
   };
 
   return (
@@ -29,27 +29,29 @@ export default function UsuariosPage() {
           <TableHead>
             <TableRow>
               <TableCell>ID</TableCell>
+              <TableCell>Usuario</TableCell>
               <TableCell>Nombre</TableCell>
               <TableCell>Teléfono</TableCell>
               <TableCell>Tipo</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {users.map(u => (
-              <TableRow key={u.id}>
-                <TableCell>{u.id}</TableCell>
-                <TableCell>{u.nombre}</TableCell>
-                <TableCell>{u.numeroTelefono}</TableCell>
-                <TableCell>{u.tipoUsuario}</TableCell>
-              </TableRow>
-            ))}
+              {users.map(u => (
+                <TableRow key={u._id}>
+                  <TableCell>{u._id}</TableCell>
+                  <TableCell>{u.username}</TableCell>
+                  <TableCell>{u.name}</TableCell>
+                  <TableCell>{u.phoneNum}</TableCell>
+                  <TableCell>{u.userType}</TableCell>
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
       </Paper>
       <Box sx={{ mt: 4 }}>
         <Typography variant="h6">Agregar Usuario</Typography>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
-          {['id','nombre','numeroTelefono','tipoUsuario'].map(field => (
+          {['username','password','name','phoneNum','userType'].map(field => (
             <TextField
               key={field}
               label={field.charAt(0).toUpperCase() + field.slice(1)}
