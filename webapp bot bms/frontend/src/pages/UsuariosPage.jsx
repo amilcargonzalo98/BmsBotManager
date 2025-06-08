@@ -1,16 +1,19 @@
 // src/pages/UsuariosPage.jsx
 import React, { useEffect, useState } from 'react';
-import { fetchUsers, createUser } from '../services/users';
+import { fetchUsers, createUser, deleteUser } from '../services/users';
 import {
   Container, Typography, TextField, Button, Box,
   Paper, Table, TableHead, TableRow, TableCell, TableBody,
-  Alert, FormControl, InputLabel, Select, MenuItem
+  Alert, FormControl, InputLabel, Select, MenuItem,
+  IconButton, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 export default function UsuariosPage() {
   const [users, setUsers] = useState([]);
   const [newUser, setNewUser] = useState({ username: '', password: '', name: '', phoneNum: '', userType: '' });
   const [error, setError] = useState('');
+  const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => {
     fetchUsers().then(res => setUsers(res.data));
@@ -29,6 +32,18 @@ export default function UsuariosPage() {
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      await deleteUser(deleteId);
+      const { data } = await fetchUsers();
+      setUsers(data);
+    } catch (err) {
+      setError('Error al eliminar usuario');
+    } finally {
+      setDeleteId(null);
+    }
+  };
+
   return (
     <Container>
       <Typography variant="h4" gutterBottom>Usuarios</Typography>
@@ -41,6 +56,7 @@ export default function UsuariosPage() {
               <TableCell>Nombre</TableCell>
               <TableCell>Teléfono</TableCell>
               <TableCell>Tipo</TableCell>
+              <TableCell>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -51,6 +67,11 @@ export default function UsuariosPage() {
                   <TableCell>{u.name}</TableCell>
                   <TableCell>{u.phoneNum}</TableCell>
                   <TableCell>{u.userType}</TableCell>
+                  <TableCell>
+                    <IconButton color="error" onClick={() => setDeleteId(u._id)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
                 </TableRow>
               ))}
           </TableBody>
@@ -84,6 +105,18 @@ export default function UsuariosPage() {
           <Button variant="contained" onClick={handleAdd}>Agregar</Button>
         </Box>
       </Box>
+      <Dialog open={Boolean(deleteId)} onClose={() => setDeleteId(null)}>
+        <DialogTitle>Confirmar eliminación</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            ¿Desea eliminar este usuario?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteId(null)}>Cancelar</Button>
+          <Button color="error" onClick={handleDelete}>Eliminar</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

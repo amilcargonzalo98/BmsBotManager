@@ -62,4 +62,13 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.status(204).end();
+  } catch (err) {
+    res.status(500).json({ message: 'Error al eliminar usuario' });
+  }
+});
+
 app.listen(3000, () => console.log('API corriendo en http://localhost:3000'));
