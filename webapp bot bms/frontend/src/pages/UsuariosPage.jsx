@@ -28,7 +28,6 @@ export default function UsuariosPage() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>ID</TableCell>
               <TableCell>Usuario</TableCell>
               <TableCell>Nombre</TableCell>
               <TableCell>Teléfono</TableCell>
@@ -38,7 +37,6 @@ export default function UsuariosPage() {
           <TableBody>
               {users.map(u => (
                 <TableRow key={u._id}>
-                  <TableCell>{u._id}</TableCell>
                   <TableCell>{u.username}</TableCell>
                   <TableCell>{u.name}</TableCell>
                   <TableCell>{u.phoneNum}</TableCell>
