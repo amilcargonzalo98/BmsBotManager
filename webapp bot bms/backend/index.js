@@ -10,30 +10,15 @@ mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
   .catch(err => console.error('Error al conectar con MongoDB:', err));
 
 const userSchema = new mongoose.Schema({
-  id: Number,
   username: String,
   password: String,
-  nombre: String,
-  numeroTelefono: String,
-  tipoUsuario: String
+  name: String,
+  phoneNum: String,
+  userType: String
 });
 
 const User = mongoose.model('User', userSchema);
 
-// Crear usuario inicial si la colección está vacía
-mongoose.connection.once('open', async () => {
-  const count = await User.countDocuments();
-  if (count === 0) {
-    await User.create({
-      id: 1,
-      username: 'admin',
-      password: 'admin',
-      nombre: 'Administrador',
-      numeroTelefono: '0000',
-      tipoUsuario: 'super'
-    });
-  }
-});
 
 const app = express();
 app.use(cors());            // permite peticiones desde tu frontend
@@ -47,7 +32,7 @@ app.post('/api/login', async (req, res) => {
   try {
     const user = await User.findOne({ username, password });
     if (!user) return res.status(401).json({ message: 'Credenciales inválidas' });
-    res.json({ user: { id: user.id, nombre: user.nombre, numeroTelefono: user.numeroTelefono, tipoUsuario: user.tipoUsuario } });
+    res.json({ user: { _id: user._id, name: user.name, phoneNum: user.phoneNum, userType: user.userType } });
   } catch (err) {
     res.status(500).json({ message: 'Error al consultar usuario' });
   }
@@ -61,8 +46,7 @@ app.get('/api/users', async (req, res) => {
 
 app.post('/api/users', async (req, res) => {
   try {
-    const count = await User.countDocuments();
-    const newUser = await User.create({ id: count + 1, ...req.body });
+    const newUser = await User.create(req.body);
     res.status(201).json(newUser);
   } catch (err) {
     res.status(500).json({ message: 'Error al crear usuario' });
