@@ -1,74 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import mongoose from 'mongoose';
-
-const mongoUri = 'mongodb+srv://admin:admin@botbmsmanager.vzqkkxo.mongodb.net/?retryWrites=true&w=majority&appName=BOTBMSManager';
-
-// Conexión a MongoDB
-mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
-  .catch(err => console.error('Error al conectar con MongoDB:', err));
-
-const userSchema = new mongoose.Schema({
-  username: String,
-  password: String,
-  name: String,
-  phoneNum: String,
-  userType: String
-});
-
-const User = mongoose.model('User', userSchema);
-
+import './config/database.js';
+import userRoutes from './routes/userRoutes.js';
 
 const app = express();
-app.use(cors());            // permite peticiones desde tu frontend
-app.use(bodyParser.json()); // parsea JSON
+app.use(cors());
+app.use(bodyParser.json());
 
-// Ya no usamos usuarios en memoria; se utilizan los almacenados en MongoDB
-
-// Login
-app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-  try {
-    const user = await User.findOne({ username, password });
-    if (!user) return res.status(401).json({ message: 'Credenciales inválidas' });
-    res.json({ user: { _id: user._id, name: user.name, phoneNum: user.phoneNum, userType: user.userType } });
-  } catch (err) {
-    res.status(500).json({ message: 'Error al consultar usuario' });
-  }
-});
-
-// CRUD Usuarios (simple)
-app.get('/api/users', async (req, res) => {
-  const users = await User.find();
-  res.json(users);
-});
-
-app.post('/api/users', async (req, res) => {
-  try {
-    const { username, phoneNum } = req.body;
-    const existing = await User.findOne({
-      $or: [{ username }, { phoneNum }]
-    });
-    if (existing) {
-      return res
-        .status(400)
-        .json({ message: 'Usuario o teléfono ya existe' });
-    }
-    const newUser = await User.create(req.body);
-    res.status(201).json(newUser);
-  } catch (err) {
-    res.status(500).json({ message: 'Error al crear usuario' });
-  }
-});
-
-app.delete('/api/users/:id', async (req, res) => {
-  try {
-    await User.findByIdAndDelete(req.params.id);
-    res.status(204).end();
-  } catch (err) {
-    res.status(500).json({ message: 'Error al eliminar usuario' });
-  }
-});
+app.use('/api', userRoutes);
 
 app.listen(3000, () => console.log('API corriendo en http://localhost:3000'));
