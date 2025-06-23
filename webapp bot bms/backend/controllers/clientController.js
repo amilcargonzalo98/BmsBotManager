@@ -36,3 +36,17 @@ export const deleteClient = async (req, res) => {
     res.status(500).json({ message: 'Error al eliminar cliente' });
   }
 };
+
+export const updateClientEnabled = async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    const client = await Client.findByIdAndUpdate(
+      req.params.id,
+      { enabled },
+      { new: true }
+    );
+    res.json(client);
+  } catch (err) {
+    res.status(500).json({ message: 'Error al actualizar cliente' });
+  }
+};
