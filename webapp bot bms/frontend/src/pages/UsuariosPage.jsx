@@ -1,6 +1,7 @@
 // src/pages/UsuariosPage.jsx
 import React, { useEffect, useState } from 'react';
 import { fetchUsers, createUser, deleteUser } from '../services/users';
+import { fetchGroups } from '../services/groups';
 import {
   Container, Typography, TextField, Button, Box,
   Paper, Table, TableHead, TableRow, TableCell, TableBody,
@@ -11,12 +12,14 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 export default function UsuariosPage() {
   const [users, setUsers] = useState([]);
-  const [newUser, setNewUser] = useState({ username: '', password: '', name: '', phoneNum: '', userType: '' });
+  const [newUser, setNewUser] = useState({ username: '', password: '', name: '', phoneNum: '', userType: '', groupId: '' });
+  const [groups, setGroups] = useState([]);
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => {
     fetchUsers().then(res => setUsers(res.data));
+    fetchGroups().then(res => setGroups(res.data));
   }, []);
 
   const handleAdd = async () => {
@@ -24,7 +27,7 @@ export default function UsuariosPage() {
       await createUser(newUser);
       const { data } = await fetchUsers();
       setUsers(data);
-      setNewUser({ username: '', password: '', name: '', phoneNum: '', userType: '' });
+      setNewUser({ username: '', password: '', name: '', phoneNum: '', userType: '', groupId: '' });
       setError('');
     } catch (err) {
       const msg = err.response?.data?.message || 'Error al crear usuario';
@@ -99,6 +102,19 @@ export default function UsuariosPage() {
             >
               {['admin', 'cliente', 'custom'].map(opt => (
                 <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl sx={{ minWidth: 120 }}>
+            <InputLabel id="group-label">Grupo</InputLabel>
+            <Select
+              labelId="group-label"
+              value={newUser.groupId}
+              label="Grupo"
+              onChange={e => setNewUser(n => ({ ...n, groupId: e.target.value }))}
+            >
+              {groups.map(g => (
+                <MenuItem key={g._id} value={g._id}>{g.groupName}</MenuItem>
               ))}
             </Select>
           </FormControl>

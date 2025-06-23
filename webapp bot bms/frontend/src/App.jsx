@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import UsuariosPage from './pages/UsuariosPage';
 import PuntosPage from './pages/PuntosPage';
+import GroupPage from './pages/GroupPage';
 import Layout from './components/Layout'; 
 import { useAuth } from './context/AuthContext';
 
@@ -22,6 +23,16 @@ export default function App() {
           <PrivateRoute>
             <Layout>
               <UsuariosPage />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/grupos"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <GroupPage />
             </Layout>
           </PrivateRoute>
         }
