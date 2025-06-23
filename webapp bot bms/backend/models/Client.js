@@ -3,7 +3,7 @@ import mongoose from '../config/database.js';
 const clientSchema = new mongoose.Schema({
   clientName: String,
   apiKey: String,
-  enabled: String,
+  enabled: { type: Boolean, default: false },
   ipAddress: String,
   location: String,
   groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' },
