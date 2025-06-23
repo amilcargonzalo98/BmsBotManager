@@ -59,6 +59,7 @@ export default function UsuariosPage() {
               <TableCell>Nombre</TableCell>
               <TableCell>Teléfono</TableCell>
               <TableCell>Tipo</TableCell>
+              <TableCell>Grupo</TableCell>
               <TableCell>Acciones</TableCell>
             </TableRow>
           </TableHead>
@@ -70,6 +71,7 @@ export default function UsuariosPage() {
                   <TableCell>{u.name}</TableCell>
                   <TableCell>{u.phoneNum}</TableCell>
                   <TableCell>{u.userType}</TableCell>
+                  <TableCell>{u.groupId}</TableCell>
                   <TableCell>
                     <IconButton color="error" onClick={() => setDeleteId(u._id)}>
                       <DeleteIcon />

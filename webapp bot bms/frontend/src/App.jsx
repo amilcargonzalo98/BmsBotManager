@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import UsuariosPage from './pages/UsuariosPage';
 import PuntosPage from './pages/PuntosPage';
 import GroupPage from './pages/GroupPage';
+import ClientPage from './pages/ClientPage';
 import Layout from './components/Layout'; 
 import { useAuth } from './context/AuthContext';
 
@@ -33,6 +34,16 @@ export default function App() {
           <PrivateRoute>
             <Layout>
               <GroupPage />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/clientes"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <ClientPage />
             </Layout>
           </PrivateRoute>
         }
