@@ -3,6 +3,7 @@ import { Drawer, List, ListItemButton, ListItemIcon, ListItemText, Toolbar } fro
 import PeopleIcon from '@mui/icons-material/People';
 import StarIcon from '@mui/icons-material/Star';
 import GroupsIcon from '@mui/icons-material/Groups';
+import DevicesIcon from '@mui/icons-material/Devices';
 import { NavLink } from 'react-router-dom';
 
 const drawerWidth = 240;
@@ -25,6 +26,10 @@ export default function Sidebar() {
         <ListItemButton component={NavLink} to="/grupos" activeClassName="Mui-selected" exact>
           <ListItemIcon><GroupsIcon /></ListItemIcon>
           <ListItemText primary="Grupos" />
+        </ListItemButton>
+        <ListItemButton component={NavLink} to="/clientes" activeClassName="Mui-selected" exact>
+          <ListItemIcon><DevicesIcon /></ListItemIcon>
+          <ListItemText primary="Clientes" />
         </ListItemButton>
         <ListItemButton component={NavLink} to="/puntos" activeClassName="Mui-selected" exact>
           <ListItemIcon><StarIcon /></ListItemIcon>
