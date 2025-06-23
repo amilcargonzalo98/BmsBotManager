@@ -51,7 +51,7 @@ export default function UsuariosPage() {
     <Container>
       <Typography variant="h4" gutterBottom>Usuarios</Typography>
       <Paper sx={{ width: '100%', overflowX: 'auto' }}>
-        <Table sx={{ minWidth: 800 }}>
+        <Table sx={{ minWidth: 1200 }}>
           <TableHead>
             <TableRow>
               <TableCell>Usuario</TableCell>
@@ -71,7 +71,7 @@ export default function UsuariosPage() {
                   <TableCell>{u.name}</TableCell>
                   <TableCell>{u.phoneNum}</TableCell>
                   <TableCell>{u.userType}</TableCell>
-                  <TableCell>{u.groupId}</TableCell>
+                  <TableCell>{groups.find(g => g._id === u.groupId)?.groupName || u.groupId}</TableCell>
                   <TableCell>
                     <IconButton color="error" onClick={() => setDeleteId(u._id)}>
                       <DeleteIcon />
