@@ -42,7 +42,7 @@ export const updateClientEnabled = async (req, res) => {
     const { enabled } = req.body;
     const client = await Client.findByIdAndUpdate(
       req.params.id,
-      { enabled },
+      { enabled: Boolean(enabled) },
       { new: true }
     );
     res.json(client);
