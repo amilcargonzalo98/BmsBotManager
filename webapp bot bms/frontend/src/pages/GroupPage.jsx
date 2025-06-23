@@ -47,7 +47,7 @@ export default function GroupPage() {
     <Container>
       <Typography variant="h4" gutterBottom>Grupos</Typography>
       <Paper sx={{ width: '100%', overflowX: 'auto' }}>
-        <Table sx={{ minWidth: 600 }}>
+        <Table sx={{ minWidth: 800 }}>
           <TableHead>
             <TableRow>
               <TableCell>Nombre</TableCell>

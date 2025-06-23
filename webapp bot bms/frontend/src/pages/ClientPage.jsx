@@ -49,7 +49,7 @@ export default function ClientPage() {
     <Container>
       <Typography variant="h4" gutterBottom>Clientes</Typography>
       <Paper sx={{ width: '100%', overflowX: 'auto' }}>
-        <Table sx={{ minWidth: 800 }}>
+        <Table sx={{ minWidth: 1200 }}>
           <TableHead>
             <TableRow>
               <TableCell>Nombre</TableCell>
@@ -70,7 +70,7 @@ export default function ClientPage() {
                 <TableCell>{c.enabled}</TableCell>
                 <TableCell>{c.ipAddress}</TableCell>
                 <TableCell>{c.location}</TableCell>
-                <TableCell>{c.groupId}</TableCell>
+                <TableCell>{groups.find(g => g._id === c.groupId)?.groupName || c.groupId}</TableCell>
                 <TableCell>{String(c.connectionStatus)}</TableCell>
                 <TableCell>
                   <IconButton color="error" onClick={() => setDeleteId(c._id)}>
