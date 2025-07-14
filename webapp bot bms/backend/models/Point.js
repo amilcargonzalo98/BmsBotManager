@@ -5,7 +5,8 @@ const pointSchema = new mongoose.Schema({
   ipAddress: String,
   pointType: Number,
   pointId: Number,
-  groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' }
+  groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' },
+  clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' }
 });
 
 export default mongoose.model('Point', pointSchema);
