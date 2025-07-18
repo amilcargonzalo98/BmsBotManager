@@ -100,7 +100,21 @@ export default function PuntosPage() {
                 <TableCell>{p.pointType}</TableCell>
                 <TableCell>{p.pointId}</TableCell>
                 <TableCell>{p.clientId?.clientName || p.clientId}</TableCell>
-                <TableCell>{p.groupId?.groupName || p.groupId}</TableCell>
+                <TableCell>
+                  {(() => {
+                    const cidGroup = p.clientId?.groupId;
+                    if (cidGroup && typeof cidGroup === 'object') {
+                      return cidGroup.groupName;
+                    }
+                    return (
+                      groups.find((g) => g._id === cidGroup)?.groupName ||
+                      p.groupId?.groupName ||
+                      cidGroup ||
+                      p.groupId ||
+                      'N/A'
+                    );
+                  })()}
+                </TableCell>
                 <TableCell>
                   {p.lastValue
                     ? `${p.lastValue.presentValue} (${new Date(
