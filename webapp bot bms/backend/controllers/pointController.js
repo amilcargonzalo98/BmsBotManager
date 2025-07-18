@@ -46,9 +46,21 @@ export const reportState = async (req, res) => {
 export const getPoints = async (req, res) => {
   try {
     const { clientId, groupId } = req.query;
-    const filter = {};
-    if (clientId) filter.clientId = clientId;
-    if (groupId) filter.groupId = groupId;
+    const andConditions = [];
+
+    if (clientId) {
+      andConditions.push({ clientId });
+    }
+
+    if (groupId) {
+      const clients = await Client.find({ groupId }).select('_id');
+      const clientIds = clients.map((c) => c._id);
+      andConditions.push({
+        $or: [{ groupId }, { clientId: { $in: clientIds } }],
+      });
+    }
+
+    const filter = andConditions.length > 0 ? { $and: andConditions } : {};
 
     const points = await Point.find(filter)
       .populate('clientId')
