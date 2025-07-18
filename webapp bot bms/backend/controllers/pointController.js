@@ -43,3 +43,35 @@ export const reportState = async (req, res) => {
   }
 };
 
+export const getPoints = async (req, res) => {
+  try {
+    const { clientId, groupId } = req.query;
+    const filter = {};
+    if (clientId) filter.clientId = clientId;
+    if (groupId) filter.groupId = groupId;
+
+    const points = await Point.find(filter)
+      .populate('clientId')
+      .populate('groupId')
+      .lean();
+
+    const result = await Promise.all(
+      points.map(async (p) => {
+        const lastLog = await DataLog.findOne({ pointId: p._id })
+          .sort({ timestamp: -1 })
+          .lean();
+        return {
+          ...p,
+          lastValue: lastLog
+            ? { presentValue: lastLog.presentValue, timestamp: lastLog.timestamp }
+            : null,
+        };
+      })
+    );
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al obtener puntos' });
+  }
+};
+
