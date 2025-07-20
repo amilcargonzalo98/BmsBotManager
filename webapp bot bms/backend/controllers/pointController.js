@@ -1,6 +1,9 @@
 import Client from '../models/Client.js';
 import Point from '../models/Point.js';
 import DataLog from '../models/DataLog.js';
+import Alarm from '../models/Alarm.js';
+import User from '../models/User.js';
+import { sendWhatsApp } from '../services/twilioService.js';
 
 export const reportState = async (req, res) => {
   try {
@@ -34,6 +37,27 @@ export const reportState = async (req, res) => {
       }
 
       await DataLog.create({ pointId: point._id, presentValue });
+
+      const alarms = await Alarm.find({ pointId: point._id });
+      for (const alarm of alarms) {
+        let triggered = false;
+        if (alarm.conditionType === 'true') triggered = Boolean(presentValue) === true;
+        else if (alarm.conditionType === 'false') triggered = Boolean(presentValue) === false;
+        else if (alarm.conditionType === 'gt') triggered = Number(presentValue) >= Number(alarm.threshold);
+        else if (alarm.conditionType === 'lt') triggered = Number(presentValue) <= Number(alarm.threshold);
+        if (triggered) {
+          const users = await User.find({ groupId: alarm.groupId });
+          for (const u of users) {
+            if (u.phoneNum) {
+              try {
+                await sendWhatsApp(u.phoneNum, `Alarma en ${point.pointName}: ${presentValue}`);
+              } catch (e) {
+                console.error('Error enviando WhatsApp', e.message);
+              }
+            }
+          }
+        }
+      }
     }
 
     res.status(201).json({ message: 'Estados registrados', count: points.length });
