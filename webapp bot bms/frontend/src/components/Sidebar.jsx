@@ -5,6 +5,7 @@ import StarIcon from '@mui/icons-material/Star';
 import GroupsIcon from '@mui/icons-material/Groups';
 import DevicesIcon from '@mui/icons-material/Devices';
 import ChatIcon from '@mui/icons-material/Chat';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { NavLink } from 'react-router-dom';
 
 const drawerWidth = 240;
@@ -39,6 +40,10 @@ export default function Sidebar() {
         <ListItemButton component={NavLink} to="/twilio" activeClassName="Mui-selected" exact>
           <ListItemIcon><ChatIcon /></ListItemIcon>
           <ListItemText primary="Twilio" />
+        </ListItemButton>
+        <ListItemButton component={NavLink} to="/whatsapp" activeClassName="Mui-selected" exact>
+          <ListItemIcon><WhatsAppIcon /></ListItemIcon>
+          <ListItemText primary="WhatsApp" />
         </ListItemButton>
       </List>
     </Drawer>
