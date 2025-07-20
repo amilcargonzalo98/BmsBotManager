@@ -51,6 +51,14 @@ export const sendMessage = async (req, res) => {
     }
 
     const data = await response.json();
+
+    await TwilioMessage.create({
+      from: `whatsapp:${config.whatsappFrom}`,
+      to: `whatsapp:${to}`,
+      body,
+      direction: 'outbound'
+    });
+
     res.json({ sid: data.sid });
   } catch (err) {
     console.error(err);
@@ -60,9 +68,14 @@ export const sendMessage = async (req, res) => {
 
 export const twilioWebhook = async (req, res) => {
   try {
-    const { From, Body } = req.body;
+    const { From, To, Body } = req.body;
     if (From && Body) {
-      await TwilioMessage.create({ from: From, body: Body });
+      await TwilioMessage.create({
+        from: From,
+        to: To,
+        body: Body,
+        direction: 'inbound'
+      });
     }
     res.set('Content-Type', 'text/plain');
     res.send('');
