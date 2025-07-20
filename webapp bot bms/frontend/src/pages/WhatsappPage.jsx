@@ -82,6 +82,9 @@ export default function WhatsappPage() {
                 <Typography variant="body2" color="text.secondary" noWrap>
                   {last.body}
                 </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {new Date(last.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({last.direction === 'outbound' ? 'tu' : (user ? user.name : phone)})
+                </Typography>
               </Box>
             );
           })}
