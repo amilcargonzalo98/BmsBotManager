@@ -6,6 +6,7 @@ import UsuariosPage from './pages/UsuariosPage';
 import PuntosPage from './pages/PuntosPage';
 import GroupPage from './pages/GroupPage';
 import ClientPage from './pages/ClientPage';
+import TwilioPage from './pages/TwilioPage';
 import Layout from './components/Layout'; 
 import { useAuth } from './context/AuthContext';
 
@@ -54,6 +55,16 @@ export default function App() {
           <PrivateRoute>
             <Layout>
               <PuntosPage />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/twilio"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <TwilioPage />
             </Layout>
           </PrivateRoute>
         }

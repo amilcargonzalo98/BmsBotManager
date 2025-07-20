@@ -23,3 +23,13 @@ El cuerpo de la petición debe tener la clave `apiKey` y un arreglo `points` con
 
 Cada objeto dentro de `points` describe un punto y su valor actual. El servidor validará la `apiKey`, registrará el punto si no existe y almacenará el valor recibido.
 
+
+## Configuración de Twilio
+
+Se añadió un endpoint para almacenar las credenciales de Twilio y enviar mensajes de WhatsApp.
+
+- `GET /api/twilio` devuelve la configuración actual.
+- `POST /api/twilio` guarda la configuración (`accountSid`, `authToken` y `whatsappFrom`).
+- `POST /api/twilio/send` envía un mensaje de prueba recibiendo `to` y `body`.
+- `POST /api/twilio/webhook` endpoint para el webhook de Twilio que recibe los mensajes entrantes.
+- `GET /api/twilio/messages` devuelve los mensajes recibidos más recientes.
