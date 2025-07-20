@@ -1,14 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Container,
   Typography,
   Box,
   TextField,
-  Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem
+  Button
 } from '@mui/material';
 import { fetchMessages, sendMessage } from '../services/twilio';
 import { fetchUsers } from '../services/users';
@@ -18,6 +14,32 @@ export default function WhatsappPage() {
   const [users, setUsers] = useState([]);
   const [selected, setSelected] = useState('');
   const [text, setText] = useState('');
+
+  const chats = useMemo(() => {
+    const map = {};
+    messages.forEach(m => {
+      const phone = m.direction === 'outbound'
+        ? m.to.replace('whatsapp:', '')
+        : m.from.replace('whatsapp:', '');
+      if (!map[phone]) map[phone] = [];
+      map[phone].push(m);
+    });
+    return map;
+  }, [messages]);
+
+  const chatList = useMemo(() => {
+    return Object.entries(chats).sort((a, b) => {
+      const lastA = a[1][a[1].length - 1].timestamp;
+      const lastB = b[1][b[1].length - 1].timestamp;
+      return new Date(lastB) - new Date(lastA);
+    });
+  }, [chats]);
+
+  useEffect(() => {
+    if (!selected && chatList.length > 0) {
+      setSelected(chatList[0][0]);
+    }
+  }, [chatList, selected]);
 
   useEffect(() => {
     load();
@@ -45,48 +67,58 @@ export default function WhatsappPage() {
   return (
     <Container>
       <Typography variant="h4" gutterBottom>WhatsApp</Typography>
-      <Box sx={{ border: '1px solid #ccc', p:1, mb:2, height: 400, overflowY:'auto', display:'flex', flexDirection:'column' }}>
-        {messages.map(m => (
-          <Box
-            key={m._id}
-            sx={{
-              alignSelf: m.direction === 'outbound' ? 'flex-end' : 'flex-start',
-              bgcolor: m.direction === 'outbound' ? 'primary.main' : 'grey.300',
-              color: m.direction === 'outbound' ? 'white' : 'black',
-              mb: 1,
-              p: 1,
-              borderRadius: 1,
-              maxWidth: '70%'
-            }}
-          >
-            <Typography variant="caption" sx={{ display:'block' }}>
-              {new Date(m.timestamp).toLocaleString()}
-            </Typography>
-            <Typography variant="body2">{m.body}</Typography>
-          </Box>
-        ))}
-      </Box>
-      <Box sx={{ display:'flex', gap:2 }}>
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel id="contact-label">Contacto</InputLabel>
-          <Select
-            labelId="contact-label"
-            value={selected}
-            label="Contacto"
-            onChange={e => setSelected(e.target.value)}
-          >
-            {users.map(u => (
-              <MenuItem key={u._id} value={u.phoneNum}>{u.name}</MenuItem>
+      <Box sx={{ display:'flex', border:'1px solid #ccc', height:400, mb:2 }}>
+        <Box sx={{ width:250, borderRight:'1px solid #ccc', overflowY:'auto' }}>
+          {chatList.map(([phone, msgs]) => {
+            const last = msgs[msgs.length - 1];
+            const user = users.find(u => u.phoneNum === phone);
+            return (
+              <Box
+                key={phone}
+                onClick={() => setSelected(phone)}
+                sx={{ p:1, cursor:'pointer', bgcolor:selected===phone?'grey.300':undefined }}
+              >
+                <Typography variant="subtitle2">{user ? user.name : phone}</Typography>
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  {last.body}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+        <Box sx={{ flexGrow:1, display:'flex', flexDirection:'column' }}>
+          <Box sx={{ p:1, flexGrow:1, overflowY:'auto', display:'flex', flexDirection:'column' }}>
+            {(chats[selected] || []).map(m => (
+              <Box
+                key={m._id}
+                sx={{
+                  alignSelf: m.direction === 'outbound' ? 'flex-end' : 'flex-start',
+                  bgcolor: m.direction === 'outbound' ? 'primary.main' : 'grey.300',
+                  color: m.direction === 'outbound' ? 'white' : 'black',
+                  mb: 1,
+                  p: 1,
+                  borderRadius: 1,
+                  maxWidth: '70%'
+                }}
+              >
+                <Typography variant="caption" sx={{ display:'block' }}>
+                  {new Date(m.timestamp).toLocaleString()}
+                </Typography>
+                <Typography variant="body2">{m.body}</Typography>
+              </Box>
             ))}
-          </Select>
-        </FormControl>
-        <TextField
-          fullWidth
-          label="Mensaje"
-          value={text}
-          onChange={e => setText(e.target.value)}
-        />
-        <Button variant="contained" onClick={handleSend}>Enviar</Button>
+          </Box>
+          <Box sx={{ display:'flex', gap:2, p:1, borderTop:'1px solid #ccc' }}>
+            <TextField
+              fullWidth
+              label="Mensaje"
+              value={text}
+              onChange={e => setText(e.target.value)}
+              size="small"
+            />
+            <Button variant="contained" onClick={handleSend} disabled={!selected}>Enviar</Button>
+          </Box>
+        </Box>
       </Box>
     </Container>
   );
