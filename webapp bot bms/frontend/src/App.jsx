@@ -8,6 +8,7 @@ import GroupPage from './pages/GroupPage';
 import ClientPage from './pages/ClientPage';
 import TwilioPage from './pages/TwilioPage';
 import WhatsappPage from './pages/WhatsappPage';
+import AlarmsPage from './pages/AlarmsPage';
 import Layout from './components/Layout'; 
 import { useAuth } from './context/AuthContext';
 
@@ -56,6 +57,16 @@ export default function App() {
           <PrivateRoute>
             <Layout>
               <PuntosPage />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/alarmas"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <AlarmsPage />
             </Layout>
           </PrivateRoute>
         }
