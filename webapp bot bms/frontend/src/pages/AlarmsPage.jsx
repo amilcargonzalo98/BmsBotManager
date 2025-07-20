@@ -32,6 +32,7 @@ export default function AlarmsPage() {
   const [alarms, setAlarms] = useState([]);
   const [points, setPoints] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [filterGroup, setFilterGroup] = useState('');
   const [newAlarm, setNewAlarm] = useState({ pointId: '', groupId: '', conditionType: 'true', threshold: '' });
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
@@ -71,7 +72,23 @@ export default function AlarmsPage() {
 
   return (
     <Container>
-      <Typography variant="h4" gutterBottom>Alarmas</Typography>
+      <Box sx={{ display:'flex', alignItems:'center', mb:2 }}>
+        <Typography variant="h4" sx={{ flexGrow:1 }} gutterBottom>Alarmas</Typography>
+        <FormControl size="small" sx={{ minWidth:160 }}>
+          <InputLabel id="filter-label">Grupo</InputLabel>
+          <Select
+            labelId="filter-label"
+            label="Grupo"
+            value={filterGroup}
+            onChange={e => setFilterGroup(e.target.value)}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {groups.map(g => (
+              <MenuItem key={g._id} value={g._id}>{g.groupName}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
       <Paper sx={{ width: '100%', overflowX: 'auto' }}>
         <Table sx={{ minWidth: 800 }}>
           <TableHead>
@@ -83,7 +100,9 @@ export default function AlarmsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {alarms.map(a => (
+            {alarms
+              .filter(a => !filterGroup || (a.groupId?._id || a.groupId) === filterGroup)
+              .map(a => (
               <TableRow key={a._id}>
                 <TableCell>{a.pointId?.pointName || a.pointId}</TableCell>
                 <TableCell>
