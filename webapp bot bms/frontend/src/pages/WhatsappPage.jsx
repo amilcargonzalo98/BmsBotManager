@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Container,
   Typography,
@@ -14,6 +14,12 @@ export default function WhatsappPage() {
   const [users, setUsers] = useState([]);
   const [selected, setSelected] = useState('');
   const [text, setText] = useState('');
+  const chatBoxRef = useRef(null);
+
+  const formatDate = (ts) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString('es-ES') + ', ' + d.toLocaleTimeString('es-ES', { hour12: false });
+  };
 
   const chats = useMemo(() => {
     const map = {};
@@ -64,6 +70,12 @@ export default function WhatsappPage() {
     load();
   };
 
+  useEffect(() => {
+    if (chatBoxRef.current) {
+      chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
+    }
+  }, [messages, selected]);
+
   return (
     <Container>
       <Typography variant="h4" gutterBottom>WhatsApp</Typography>
@@ -83,14 +95,14 @@ export default function WhatsappPage() {
                   {last.body}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {new Date(last.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({last.direction === 'outbound' ? 'tu' : (user ? user.name : phone)})
+                  {formatDate(last.timestamp)} ({last.direction === 'outbound' ? 'tu' : (user ? user.name : phone)})
                 </Typography>
               </Box>
             );
           })}
         </Box>
         <Box sx={{ flexGrow:1, display:'flex', flexDirection:'column' }}>
-          <Box sx={{ p:1, flexGrow:1, overflowY:'auto', display:'flex', flexDirection:'column' }}>
+          <Box ref={chatBoxRef} sx={{ p:1, flexGrow:1, overflowY:'auto', display:'flex', flexDirection:'column' }}>
             {(chats[selected] || []).map(m => (
               <Box
                 key={m._id}
@@ -105,7 +117,7 @@ export default function WhatsappPage() {
                 }}
               >
                 <Typography variant="caption" sx={{ display:'block' }}>
-                  {new Date(m.timestamp).toLocaleString()}
+                  {formatDate(m.timestamp)}
                 </Typography>
                 <Typography variant="body2">{m.body}</Typography>
               </Box>

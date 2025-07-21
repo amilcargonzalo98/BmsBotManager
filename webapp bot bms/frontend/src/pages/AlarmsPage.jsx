@@ -73,8 +73,7 @@ export default function AlarmsPage() {
   return (
     <Container>
       <Box sx={{ display:'flex', alignItems:'center', mb:2 }}>
-        <Typography variant="h4" sx={{ flexGrow:1 }} gutterBottom>Alarmas</Typography>
-        <FormControl size="small" sx={{ minWidth:160 }}>
+        <FormControl size="small" sx={{ minWidth:160, mr:2 }}>
           <InputLabel id="filter-label">Grupo</InputLabel>
           <Select
             labelId="filter-label"
@@ -88,6 +87,7 @@ export default function AlarmsPage() {
             ))}
           </Select>
         </FormControl>
+        <Typography variant="h4" sx={{ flexGrow:1 }} gutterBottom>Alarmas</Typography>
       </Box>
       <Paper sx={{ width: '100%', overflowX: 'auto' }}>
         <Table sx={{ minWidth: 800 }}>
