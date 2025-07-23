@@ -27,13 +27,15 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { fetchAlarms, createAlarm, deleteAlarm } from '../services/alarms';
 import { fetchPoints } from '../services/points';
 import { fetchGroups } from '../services/groups';
+import { fetchClients } from '../services/clients';
 
 export default function AlarmsPage() {
   const [alarms, setAlarms] = useState([]);
   const [points, setPoints] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [clients, setClients] = useState([]);
   const [filterGroup, setFilterGroup] = useState('');
-  const [pointGroupFilter, setPointGroupFilter] = useState('');
+  const [pointClientFilter, setPointClientFilter] = useState('');
   const [newAlarm, setNewAlarm] = useState({ alarmName: '', pointId: '', groupId: '', conditionType: 'true', threshold: '' });
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
@@ -41,11 +43,12 @@ export default function AlarmsPage() {
   useEffect(() => {
     load();
     fetchGroups().then(res => setGroups(res.data));
+    fetchClients().then(res => setClients(res.data));
   }, []);
 
   useEffect(() => {
-    fetchPoints('', pointGroupFilter).then(res => setPoints(res.data));
-  }, [pointGroupFilter]);
+    fetchPoints(pointClientFilter, '').then(res => setPoints(res.data));
+  }, [pointClientFilter]);
 
   const load = async () => {
     const { data } = await fetchAlarms();
@@ -97,6 +100,7 @@ export default function AlarmsPage() {
         <Table sx={{ minWidth: 800 }}>
           <TableHead>
             <TableRow>
+              <TableCell>Nombre</TableCell>
               <TableCell>Punto</TableCell>
               <TableCell>Condición</TableCell>
               <TableCell>Grupo</TableCell>
@@ -108,6 +112,7 @@ export default function AlarmsPage() {
               .filter(a => !filterGroup || (a.groupId?._id || a.groupId) === filterGroup)
               .map(a => (
               <TableRow key={a._id}>
+                <TableCell>{a.alarmName}</TableCell>
                 <TableCell>{a.pointId?.pointName || a.pointId}</TableCell>
                 <TableCell>
                   {a.conditionType === 'gt' && `> ${a.threshold}`}
@@ -136,16 +141,16 @@ export default function AlarmsPage() {
             onChange={e=>setNewAlarm(n=>({ ...n, alarmName:e.target.value }))}
           />
           <FormControl sx={{ minWidth:160 }}>
-            <InputLabel id="point-group-filter-label">Grupo Punto</InputLabel>
+            <InputLabel id="point-client-filter-label">Cliente</InputLabel>
             <Select
-              labelId="point-group-filter-label"
-              value={pointGroupFilter}
-              label="Grupo Punto"
-              onChange={e=>setPointGroupFilter(e.target.value)}
+              labelId="point-client-filter-label"
+              value={pointClientFilter}
+              label="Cliente"
+              onChange={e=>setPointClientFilter(e.target.value)}
             >
               <MenuItem value="">Todos</MenuItem>
-              {groups.map(g => (
-                <MenuItem key={g._id} value={g._id}>{g.groupName}</MenuItem>
+              {clients.map(c => (
+                <MenuItem key={c._id} value={c._id}>{c.clientName}</MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -157,10 +162,8 @@ export default function AlarmsPage() {
               label="Punto"
               onChange={e=>setNewAlarm(n=>({ ...n, pointId:e.target.value }))}
             >
-              {points
-                .filter(p => !pointGroupFilter || (p.groupId?._id || p.groupId) === pointGroupFilter)
-                .map(p => (
-                  <MenuItem key={p._id} value={p._id}>{p.pointName}</MenuItem>
+              {points.map(p => (
+                <MenuItem key={p._id} value={p._id}>{p.pointName}</MenuItem>
               ))}
             </Select>
           </FormControl>
