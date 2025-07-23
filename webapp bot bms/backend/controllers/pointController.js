@@ -3,7 +3,7 @@ import Point from '../models/Point.js';
 import DataLog from '../models/DataLog.js';
 import Alarm from '../models/Alarm.js';
 import User from '../models/User.js';
-import { sendWhatsApp } from '../services/twilioService.js';
+import { sendAlarmWhatsApp } from '../services/twilioService.js';
 
 export const reportState = async (req, res) => {
   try {
@@ -50,7 +50,7 @@ export const reportState = async (req, res) => {
           for (const u of users) {
             if (u.phoneNum) {
               try {
-                await sendWhatsApp(u.phoneNum, `Alarma en ${point.pointName}: ${presentValue}`);
+                await sendAlarmWhatsApp(u.phoneNum, u.username, point.pointName);
               } catch (e) {
                 console.error('Error enviando WhatsApp', e.message);
               }

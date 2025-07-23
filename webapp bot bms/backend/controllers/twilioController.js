@@ -8,15 +8,17 @@ export const getConfig = async (req, res) => {
 
 export const updateConfig = async (req, res) => {
   try {
-    const { accountSid, authToken, whatsappFrom } = req.body;
+    const { accountSid, authToken, whatsappFrom, messagingServiceSid, contentSid } = req.body;
     let config = await TwilioConfig.findOne();
     if (config) {
       config.accountSid = accountSid;
       config.authToken = authToken;
       config.whatsappFrom = whatsappFrom;
+      config.messagingServiceSid = messagingServiceSid;
+      config.contentSid = contentSid;
       await config.save();
     } else {
-      config = await TwilioConfig.create({ accountSid, authToken, whatsappFrom });
+      config = await TwilioConfig.create({ accountSid, authToken, whatsappFrom, messagingServiceSid, contentSid });
     }
     res.json(config);
   } catch (err) {
