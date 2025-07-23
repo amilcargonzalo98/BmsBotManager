@@ -33,15 +33,19 @@ export default function AlarmsPage() {
   const [points, setPoints] = useState([]);
   const [groups, setGroups] = useState([]);
   const [filterGroup, setFilterGroup] = useState('');
-  const [newAlarm, setNewAlarm] = useState({ pointId: '', groupId: '', conditionType: 'true', threshold: '' });
+  const [pointGroupFilter, setPointGroupFilter] = useState('');
+  const [newAlarm, setNewAlarm] = useState({ alarmName: '', pointId: '', groupId: '', conditionType: 'true', threshold: '' });
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => {
     load();
-    fetchPoints().then(res => setPoints(res.data));
     fetchGroups().then(res => setGroups(res.data));
   }, []);
+
+  useEffect(() => {
+    fetchPoints('', pointGroupFilter).then(res => setPoints(res.data));
+  }, [pointGroupFilter]);
 
   const load = async () => {
     const { data } = await fetchAlarms();
@@ -52,7 +56,7 @@ export default function AlarmsPage() {
     try {
       await createAlarm(newAlarm);
       await load();
-      setNewAlarm({ pointId: '', groupId: '', conditionType: 'true', threshold: '' });
+      setNewAlarm({ alarmName: '', pointId: '', groupId: '', conditionType: 'true', threshold: '' });
       setError('');
     } catch {
       setError('Error al crear alarma');
@@ -72,6 +76,7 @@ export default function AlarmsPage() {
 
   return (
     <Container>
+      <Typography variant="h4" gutterBottom>Alarmas</Typography>
       <Box sx={{ display:'flex', alignItems:'center', mb:2 }}>
         <FormControl size="small" sx={{ minWidth:160, mr:2 }}>
           <InputLabel id="filter-label">Grupo</InputLabel>
@@ -87,7 +92,6 @@ export default function AlarmsPage() {
             ))}
           </Select>
         </FormControl>
-        <Typography variant="h4" sx={{ flexGrow:1 }} gutterBottom>Alarmas</Typography>
       </Box>
       <Paper sx={{ width: '100%', overflowX: 'auto' }}>
         <Table sx={{ minWidth: 800 }}>
@@ -126,6 +130,25 @@ export default function AlarmsPage() {
         <Typography variant="h6">Crear Alarma</Typography>
         {error && <Alert severity="warning" sx={{ mb:2 }}>{error}</Alert>}
         <Box sx={{ display:'flex', gap:2, flexWrap:'wrap', mt:2 }}>
+          <TextField
+            label="Nombre"
+            value={newAlarm.alarmName}
+            onChange={e=>setNewAlarm(n=>({ ...n, alarmName:e.target.value }))}
+          />
+          <FormControl sx={{ minWidth:160 }}>
+            <InputLabel id="point-group-filter-label">Grupo Punto</InputLabel>
+            <Select
+              labelId="point-group-filter-label"
+              value={pointGroupFilter}
+              label="Grupo Punto"
+              onChange={e=>setPointGroupFilter(e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {groups.map(g => (
+                <MenuItem key={g._id} value={g._id}>{g.groupName}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <FormControl sx={{ minWidth:160 }}>
             <InputLabel id="point-label">Punto</InputLabel>
             <Select
@@ -134,8 +157,10 @@ export default function AlarmsPage() {
               label="Punto"
               onChange={e=>setNewAlarm(n=>({ ...n, pointId:e.target.value }))}
             >
-              {points.map(p => (
-                <MenuItem key={p._id} value={p._id}>{p.pointName}</MenuItem>
+              {points
+                .filter(p => !pointGroupFilter || (p.groupId?._id || p.groupId) === pointGroupFilter)
+                .map(p => (
+                  <MenuItem key={p._id} value={p._id}>{p.pointName}</MenuItem>
               ))}
             </Select>
           </FormControl>
