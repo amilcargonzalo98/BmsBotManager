@@ -3,7 +3,13 @@ import { Container, Typography, TextField, Button, Box, Alert } from '@mui/mater
 import { fetchConfig, saveConfig } from '../services/twilio';
 
 export default function TwilioPage() {
-  const [config, setConfig] = useState({ accountSid: '', authToken: '', whatsappFrom: '' });
+  const [config, setConfig] = useState({
+    accountSid: '',
+    authToken: '',
+    whatsappFrom: '',
+    messagingServiceSid: '',
+    contentSid: ''
+  });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -12,7 +18,9 @@ export default function TwilioPage() {
       if (res.data) setConfig({
         accountSid: res.data.accountSid || '',
         authToken: res.data.authToken || '',
-        whatsappFrom: res.data.whatsappFrom || ''
+        whatsappFrom: res.data.whatsappFrom || '',
+        messagingServiceSid: res.data.messagingServiceSid || '',
+        contentSid: res.data.contentSid || ''
       });
     });
   }, []);
@@ -39,6 +47,8 @@ export default function TwilioPage() {
         <TextField label="Account SID" value={config.accountSid} onChange={e=>setConfig(c=>({...c, accountSid:e.target.value}))} />
         <TextField label="Auth Token" value={config.authToken} onChange={e=>setConfig(c=>({...c, authToken:e.target.value}))} />
         <TextField label="WhatsApp From" value={config.whatsappFrom} onChange={e=>setConfig(c=>({...c, whatsappFrom:e.target.value}))} />
+        <TextField label="Service SID alarmas" value={config.messagingServiceSid} onChange={e=>setConfig(c=>({...c, messagingServiceSid:e.target.value}))} />
+        <TextField label="Content SID alarmas" value={config.contentSid} onChange={e=>setConfig(c=>({...c, contentSid:e.target.value}))} />
         <Button variant="contained" onClick={handleSave}>Guardar</Button>
       </Box>
       {/* Removed test message and received messages sections */}
