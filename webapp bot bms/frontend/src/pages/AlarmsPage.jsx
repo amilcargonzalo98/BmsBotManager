@@ -27,21 +27,28 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { fetchAlarms, createAlarm, deleteAlarm } from '../services/alarms';
 import { fetchPoints } from '../services/points';
 import { fetchGroups } from '../services/groups';
+import { fetchClients } from '../services/clients';
 
 export default function AlarmsPage() {
   const [alarms, setAlarms] = useState([]);
   const [points, setPoints] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [clients, setClients] = useState([]);
   const [filterGroup, setFilterGroup] = useState('');
-  const [newAlarm, setNewAlarm] = useState({ pointId: '', groupId: '', conditionType: 'true', threshold: '' });
+  const [pointClientFilter, setPointClientFilter] = useState('');
+  const [newAlarm, setNewAlarm] = useState({ alarmName: '', pointId: '', groupId: '', conditionType: 'true', threshold: '' });
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => {
     load();
-    fetchPoints().then(res => setPoints(res.data));
     fetchGroups().then(res => setGroups(res.data));
+    fetchClients().then(res => setClients(res.data));
   }, []);
+
+  useEffect(() => {
+    fetchPoints(pointClientFilter, '').then(res => setPoints(res.data));
+  }, [pointClientFilter]);
 
   const load = async () => {
     const { data } = await fetchAlarms();
@@ -52,7 +59,7 @@ export default function AlarmsPage() {
     try {
       await createAlarm(newAlarm);
       await load();
-      setNewAlarm({ pointId: '', groupId: '', conditionType: 'true', threshold: '' });
+      setNewAlarm({ alarmName: '', pointId: '', groupId: '', conditionType: 'true', threshold: '' });
       setError('');
     } catch {
       setError('Error al crear alarma');
@@ -72,6 +79,7 @@ export default function AlarmsPage() {
 
   return (
     <Container>
+      <Typography variant="h4" gutterBottom>Alarmas</Typography>
       <Box sx={{ display:'flex', alignItems:'center', mb:2 }}>
         <FormControl size="small" sx={{ minWidth:160, mr:2 }}>
           <InputLabel id="filter-label">Grupo</InputLabel>
@@ -87,12 +95,12 @@ export default function AlarmsPage() {
             ))}
           </Select>
         </FormControl>
-        <Typography variant="h4" sx={{ flexGrow:1 }} gutterBottom>Alarmas</Typography>
       </Box>
       <Paper sx={{ width: '100%', overflowX: 'auto' }}>
         <Table sx={{ minWidth: 800 }}>
           <TableHead>
             <TableRow>
+              <TableCell>Nombre</TableCell>
               <TableCell>Punto</TableCell>
               <TableCell>Condición</TableCell>
               <TableCell>Grupo</TableCell>
@@ -104,6 +112,7 @@ export default function AlarmsPage() {
               .filter(a => !filterGroup || (a.groupId?._id || a.groupId) === filterGroup)
               .map(a => (
               <TableRow key={a._id}>
+                <TableCell>{a.alarmName}</TableCell>
                 <TableCell>{a.pointId?.pointName || a.pointId}</TableCell>
                 <TableCell>
                   {a.conditionType === 'gt' && `> ${a.threshold}`}
@@ -126,6 +135,25 @@ export default function AlarmsPage() {
         <Typography variant="h6">Crear Alarma</Typography>
         {error && <Alert severity="warning" sx={{ mb:2 }}>{error}</Alert>}
         <Box sx={{ display:'flex', gap:2, flexWrap:'wrap', mt:2 }}>
+          <TextField
+            label="Nombre"
+            value={newAlarm.alarmName}
+            onChange={e=>setNewAlarm(n=>({ ...n, alarmName:e.target.value }))}
+          />
+          <FormControl sx={{ minWidth:160 }}>
+            <InputLabel id="point-client-filter-label">Cliente</InputLabel>
+            <Select
+              labelId="point-client-filter-label"
+              value={pointClientFilter}
+              label="Cliente"
+              onChange={e=>setPointClientFilter(e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {clients.map(c => (
+                <MenuItem key={c._id} value={c._id}>{c.clientName}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <FormControl sx={{ minWidth:160 }}>
             <InputLabel id="point-label">Punto</InputLabel>
             <Select
