@@ -79,7 +79,7 @@ export default function WhatsappPage() {
   return (
     <Container>
       <Typography variant="h4" gutterBottom>WhatsApp</Typography>
-      <Box sx={{ display:'flex', border:'1px solid #ccc', height:400, mb:2 }}>
+      <Box sx={{ display:'flex', border:'1px solid #ccc', height:600, mb:2 }}>
         <Box sx={{ width:250, borderRight:'1px solid #ccc', overflowY:'auto' }}>
           {chatList.map(([phone, msgs]) => {
             const last = msgs[msgs.length - 1];
