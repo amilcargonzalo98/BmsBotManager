@@ -63,7 +63,7 @@ export const reportState = async (req, res) => {
             for (const u of users) {
               if (u.phoneNum) {
                 try {
-                  await sendAlarmWhatsApp(u.phoneNum, u.username, point.pointName);
+                  await sendAlarmWhatsApp(u.phoneNum, alarm.alarmName);
                 } catch (e) {
                   console.error('Error enviando WhatsApp', e.message);
                 }
