@@ -1,13 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  Box,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TextField,
+} from '@mui/material';
 import { fetchPoints } from '../services/points';
 import { fetchDataLogs } from '../services/datalogs';
+
+/* global Chart */
 
 export default function TendenciasPage() {
   const [points, setPoints] = useState([]);
   const [selectedPoint, setSelectedPoint] = useState('');
   const [logs, setLogs] = useState([]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const chartRef = useRef(null);
 
   useEffect(() => {
     fetchPoints()
@@ -26,6 +38,49 @@ export default function TendenciasPage() {
       setLogs([]);
     }
   };
+
+  useEffect(() => {
+    if (chartRef.current) {
+      chartRef.current.destroy();
+    }
+    if (logs.length > 0) {
+      const filtered = logs.filter((log) => {
+        const t = new Date(log.timestamp).getTime();
+        if (startDate && t < new Date(startDate).getTime()) return false;
+        if (endDate && t > new Date(endDate).getTime()) return false;
+        return true;
+      });
+
+      const ctx = document.getElementById('trend-chart').getContext('2d');
+      chartRef.current = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: filtered.map((l) => new Date(l.timestamp).toLocaleString()),
+          datasets: [
+            {
+              label: 'Valor',
+              data: filtered.map((l) => l.presentValue),
+              borderColor: '#8884d8',
+              fill: false,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            zoom: {
+              pan: { enabled: true, mode: 'x' },
+              zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                mode: 'x',
+              },
+            },
+          },
+        },
+      });
+    }
+  }, [logs, startDate, endDate]);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -47,20 +102,23 @@ export default function TendenciasPage() {
           ))}
         </Select>
       </FormControl>
-      {logs.length > 0 && (
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={logs}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="timestamp"
-              tickFormatter={(t) => new Date(t).toLocaleTimeString()}
-            />
-            <YAxis />
-            <Tooltip labelFormatter={(label) => new Date(label).toLocaleString()} />
-            <Line type="monotone" dataKey="presentValue" stroke="#8884d8" />
-          </LineChart>
-        </ResponsiveContainer>
-      )}
+      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+        <TextField
+          label="Inicio"
+          type="datetime-local"
+          InputLabelProps={{ shrink: true }}
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+        />
+        <TextField
+          label="Fin"
+          type="datetime-local"
+          InputLabelProps={{ shrink: true }}
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+        />
+      </Box>
+      {logs.length > 0 && <canvas id="trend-chart" height="400" />}
     </Box>
   );
 }
