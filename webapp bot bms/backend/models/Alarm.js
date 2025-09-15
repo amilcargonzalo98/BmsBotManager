@@ -6,6 +6,7 @@ const alarmSchema = new mongoose.Schema({
   groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group', required: true },
   conditionType: { type: String, enum: ['true', 'false', 'gt', 'lt'], required: true },
   threshold: mongoose.Schema.Types.Mixed,
+  active: { type: Boolean, default: false },
 });
 
 export default mongoose.model('Alarm', alarmSchema);
