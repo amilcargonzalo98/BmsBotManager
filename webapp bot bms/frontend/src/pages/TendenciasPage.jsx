@@ -118,7 +118,7 @@ export default function TendenciasPage() {
           onChange={(e) => setEndDate(e.target.value)}
         />
       </Box>
-      {logs.length > 0 && <canvas id="trend-chart" height="400" />}
+      {logs.length > 0 && <canvas id="trend-chart" height="100" />}
     </Box>
   );
 }
