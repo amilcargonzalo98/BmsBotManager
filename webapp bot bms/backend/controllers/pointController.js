@@ -22,6 +22,10 @@ export const reportState = async (req, res) => {
       return res.status(400).json({ message: 'points es requerido' });
     }
 
+    client.lastReport = new Date();
+    client.connectionStatus = true;
+    await client.save();
+
     for (const p of points) {
       const { pointName, ipAddress, pointType, pointId, presentValue } = p;
 

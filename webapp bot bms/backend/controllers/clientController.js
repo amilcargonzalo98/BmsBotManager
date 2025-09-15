@@ -8,6 +8,15 @@ function generateApiKey() {
 export const getClients = async (req, res) => {
   try {
     const clients = await Client.find();
+    const now = Date.now();
+    for (const client of clients) {
+      const connected =
+        client.lastReport && now - client.lastReport.getTime() <= 60000;
+      if (client.connectionStatus !== connected) {
+        client.connectionStatus = connected;
+        await client.save();
+      }
+    }
     res.json(clients);
   } catch (err) {
     res.status(500).json({ message: 'Error al obtener clientes' });
