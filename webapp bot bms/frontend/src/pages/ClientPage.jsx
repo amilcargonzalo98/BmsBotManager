@@ -34,7 +34,7 @@ export default function ClientPage() {
       setClients(data);
       setNewClient({ clientName: '', location: '', groupId: '' });
       setError('');
-    } catch (err) {
+    } catch {
       setError('Error al crear cliente');
     }
   };
@@ -44,7 +44,7 @@ export default function ClientPage() {
       await deleteClient(deleteId);
       const { data } = await fetchClients();
       setClients(data);
-    } catch (err) {
+    } catch {
       setError('Error al eliminar cliente');
     } finally {
       setDeleteId(null);
@@ -56,7 +56,7 @@ export default function ClientPage() {
       await updateClientEnabled(toggleInfo.id, toggleInfo.enabled);
       const { data } = await fetchClients();
       setClients(data);
-    } catch (err) {
+    } catch {
       setError('Error al actualizar cliente');
     } finally {
       setToggleInfo(null);
@@ -94,7 +94,10 @@ export default function ClientPage() {
                 <TableCell>{c.location}</TableCell>
                 <TableCell>{groups.find(g => g._id === c.groupId)?.groupName || c.groupId}</TableCell>
                 <TableCell>
-                  <FiberManualRecord sx={{ color: c.connectionStatus ? 'green' : 'red' }} />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <FiberManualRecord sx={{ color: c.connectionStatus ? 'green' : 'red' }} />
+                    {c.lastReport ? new Date(c.lastReport).toLocaleString() : 'Sin conexión'}
+                  </Box>
                 </TableCell>
                 <TableCell>
                   <IconButton color="error" onClick={() => setDeleteId(c._id)}>

@@ -26,7 +26,7 @@ export default function GroupPage() {
       setGroups(data);
       setNewGroup({ groupName: '', description: '' });
       setError('');
-    } catch (err) {
+    } catch {
       setError('Error al crear grupo');
     }
   };
@@ -36,7 +36,7 @@ export default function GroupPage() {
       await deleteGroup(deleteId);
       const { data } = await fetchGroups();
       setGroups(data);
-    } catch (err) {
+    } catch {
       setError('Error al eliminar grupo');
     } finally {
       setDeleteId(null);

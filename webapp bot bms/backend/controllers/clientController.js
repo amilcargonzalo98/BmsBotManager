@@ -1,5 +1,7 @@
 import Client from '../models/Client.js';
 import crypto from 'crypto';
+import Point from '../models/Point.js';
+import Alarm from '../models/Alarm.js';
 
 function generateApiKey() {
   return crypto.randomBytes(32).toString('hex');
@@ -49,11 +51,21 @@ export const deleteClient = async (req, res) => {
 export const updateClientEnabled = async (req, res) => {
   try {
     const { enabled } = req.body;
-    const client = await Client.findByIdAndUpdate(
-      req.params.id,
-      { enabled: Boolean(enabled) },
-      { new: true }
-    );
+    const client = await Client.findById(req.params.id);
+    if (!client) {
+      return res.status(404).json({ message: 'Cliente no encontrado' });
+    }
+    client.enabled = Boolean(enabled);
+    if (!client.enabled) {
+      client.connectionStatus = false;
+      client.lastReport = null;
+      const points = await Point.find({ clientId: client._id }).select('_id');
+      const pointIds = points.map((p) => p._id);
+      if (pointIds.length > 0) {
+        await Alarm.updateMany({ pointId: { $in: pointIds } }, { active: false });
+      }
+    }
+    await client.save();
     res.json(client);
   } catch (err) {
     res.status(500).json({ message: 'Error al actualizar cliente' });
