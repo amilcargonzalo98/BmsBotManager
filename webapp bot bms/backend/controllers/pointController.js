@@ -31,6 +31,8 @@ export const reportState = async (req, res) => {
     client.connectionStatus = true;
     await client.save();
 
+    const reportedNames = points.map((p) => p.pointName);
+
     for (const p of points) {
       const { pointName, ipAddress, pointType, pointId, presentValue } = p;
 
@@ -61,7 +63,7 @@ export const reportState = async (req, res) => {
             for (const u of users) {
               if (u.phoneNum) {
                 try {
-                  await sendAlarmWhatsApp(u.phoneNum, u.username, point.pointName);
+                  await sendAlarmWhatsApp(u.phoneNum, alarm.alarmName);
                 } catch (e) {
                   console.error('Error enviando WhatsApp', e.message);
                 }
@@ -75,6 +77,19 @@ export const reportState = async (req, res) => {
           await alarm.save();
         }
       }
+    }
+
+    const toRemove = await Point.find({
+      clientId: client._id,
+      pointName: { $nin: reportedNames },
+    }).select('_id');
+
+    if (toRemove.length > 0) {
+      const ids = toRemove.map((p) => p._id);
+      await Promise.all([
+        Point.deleteMany({ _id: { $in: ids } }),
+        Alarm.deleteMany({ pointId: { $in: ids } }),
+      ]);
     }
 
     res.status(201).json({ message: 'Estados registrados', count: points.length });
