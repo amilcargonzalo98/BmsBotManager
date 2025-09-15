@@ -45,17 +45,25 @@ export const reportState = async (req, res) => {
         else if (alarm.conditionType === 'false') triggered = Boolean(presentValue) === false;
         else if (alarm.conditionType === 'gt') triggered = Number(presentValue) >= Number(alarm.threshold);
         else if (alarm.conditionType === 'lt') triggered = Number(presentValue) <= Number(alarm.threshold);
+
         if (triggered) {
-          const users = await User.find({ groupId: alarm.groupId });
-          for (const u of users) {
-            if (u.phoneNum) {
-              try {
-                await sendAlarmWhatsApp(u.phoneNum, u.username, point.pointName);
-              } catch (e) {
-                console.error('Error enviando WhatsApp', e.message);
+          if (!alarm.active) {
+            const users = await User.find({ groupId: alarm.groupId });
+            for (const u of users) {
+              if (u.phoneNum) {
+                try {
+                  await sendAlarmWhatsApp(u.phoneNum, u.username, point.pointName);
+                } catch (e) {
+                  console.error('Error enviando WhatsApp', e.message);
+                }
               }
             }
+            alarm.active = true;
+            await alarm.save();
           }
+        } else if (alarm.active) {
+          alarm.active = false;
+          await alarm.save();
         }
       }
     }
