@@ -40,7 +40,7 @@ export default function UsuariosPage() {
       await deleteUser(deleteId);
       const { data } = await fetchUsers();
       setUsers(data);
-    } catch (err) {
+    } catch {
       setError('Error al eliminar usuario');
     } finally {
       setDeleteId(null);

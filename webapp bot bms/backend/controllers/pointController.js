@@ -17,6 +17,11 @@ export const reportState = async (req, res) => {
     if (!client) {
       return res.status(401).json({ message: 'apiKey inválido' });
     }
+    if (!client.enabled) {
+      client.connectionStatus = false;
+      await client.save();
+      return res.status(403).json({ message: 'Cliente deshabilitado' });
+    }
 
     if (!Array.isArray(points) || points.length === 0) {
       return res.status(400).json({ message: 'points es requerido' });
@@ -122,4 +127,3 @@ export const getPoints = async (req, res) => {
     res.status(500).json({ message: 'Error al obtener puntos' });
   }
 };
-
