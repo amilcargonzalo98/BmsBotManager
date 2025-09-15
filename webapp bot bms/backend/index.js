@@ -8,6 +8,7 @@ import groupRoutes from './routes/groupRoutes.js';
 import pointRoutes from './routes/pointRoutes.js';
 import twilioRoutes from './routes/twilioRoutes.js';
 import alarmRoutes from './routes/alarmRoutes.js';
+import dataLogRoutes from './routes/dataLogRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -19,5 +20,6 @@ app.use('/api', groupRoutes);
 app.use('/api', pointRoutes);
 app.use('/api', twilioRoutes);
 app.use('/api', alarmRoutes);
+app.use('/api', dataLogRoutes);
 
 app.listen(3000, () => console.log('API corriendo en http://localhost:3000'));

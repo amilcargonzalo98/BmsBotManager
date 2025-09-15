@@ -7,6 +7,7 @@ import DevicesIcon from '@mui/icons-material/Devices';
 import ChatIcon from '@mui/icons-material/Chat';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import AlarmIcon from '@mui/icons-material/NotificationsActive';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { NavLink } from 'react-router-dom';
 
 const drawerWidth = 240;
@@ -41,6 +42,10 @@ export default function Sidebar() {
         <ListItemButton component={NavLink} to="/alarmas" activeClassName="Mui-selected" exact>
           <ListItemIcon><AlarmIcon /></ListItemIcon>
           <ListItemText primary="Alarmas" />
+        </ListItemButton>
+        <ListItemButton component={NavLink} to="/tendencias" activeClassName="Mui-selected" exact>
+          <ListItemIcon><ShowChartIcon /></ListItemIcon>
+          <ListItemText primary="Tendencias" />
         </ListItemButton>
         <ListItemButton component={NavLink} to="/twilio" activeClassName="Mui-selected" exact>
           <ListItemIcon><ChatIcon /></ListItemIcon>
