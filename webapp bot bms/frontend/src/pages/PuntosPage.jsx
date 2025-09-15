@@ -25,9 +25,33 @@ export default function PuntosPage() {
   const [clientId, setClientId] = useState('');
   const [groupId, setGroupId] = useState('');
 
+  const typeAcronyms = {
+    0: 'AI',
+    1: 'AO',
+    2: 'AV',
+    3: 'BI',
+    4: 'BO',
+    5: 'BV',
+    9: 'EE',
+    13: 'MSI',
+    14: 'MSO',
+  };
+
   const loadPoints = async (cId, gId) => {
     const { data } = await fetchPoints(cId, gId);
-    setPoints(data);
+    setPoints((prev) => {
+      const incomingIds = new Set(data.map((p) => p._id));
+      const updated = prev.filter((p) => incomingIds.has(p._id));
+      data.forEach((p) => {
+        const idx = updated.findIndex((u) => u._id === p._id);
+        if (idx >= 0) {
+          updated[idx] = p;
+        } else {
+          updated.push(p);
+        }
+      });
+      return updated;
+    });
   };
 
   useEffect(() => {
@@ -97,7 +121,10 @@ export default function PuntosPage() {
               <TableRow key={p._id}>
                 <TableCell>{p.pointName}</TableCell>
                 <TableCell>{p.ipAddress}</TableCell>
-                <TableCell>{p.pointType}</TableCell>
+                <TableCell>
+                  {p.pointType}
+                  {typeAcronyms[p.pointType] ? ` (${typeAcronyms[p.pointType]})` : ''}
+                </TableCell>
                 <TableCell>{p.pointId}</TableCell>
                 <TableCell>{p.clientId?.clientName || p.clientId}</TableCell>
                 <TableCell>
