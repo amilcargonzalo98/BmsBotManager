@@ -9,7 +9,8 @@ import ClientPage from './pages/ClientPage';
 import TwilioPage from './pages/TwilioPage';
 import WhatsappPage from './pages/WhatsappPage';
 import AlarmsPage from './pages/AlarmsPage';
-import Layout from './components/Layout'; 
+import TendenciasPage from './pages/TendenciasPage';
+import Layout from './components/Layout';
 import { useAuth } from './context/AuthContext';
 
 function PrivateRoute({ children }) {
@@ -67,6 +68,16 @@ export default function App() {
           <PrivateRoute>
             <Layout>
               <AlarmsPage />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/tendencias"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <TendenciasPage />
             </Layout>
           </PrivateRoute>
         }
