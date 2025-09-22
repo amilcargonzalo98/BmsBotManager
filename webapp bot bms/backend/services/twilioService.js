@@ -60,10 +60,26 @@ export async function sendAlarmWhatsApp(to, username, alarmName) {
     throw new Error(text);
   }
 
+  const createdMessage = await response.json();
+
+  const messageDetailsUrl = `https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}/Messages/${createdMessage.sid}.json`;
+  const messageDetailsResponse = await fetch(messageDetailsUrl, {
+    headers: {
+      Authorization: `Basic ${auth}`,
+    },
+  });
+
+  if (!messageDetailsResponse.ok) {
+    const text = await messageDetailsResponse.text();
+    throw new Error(text);
+  }
+
+  const messageDetails = await messageDetailsResponse.json();
+
   await TwilioMessage.create({
-    from: `messaging:${config.messagingServiceSid}`,
+    from: messageDetails.from ?? `messaging:${config.messagingServiceSid}`,
     to: `whatsapp:${to}`,
-    body: JSON.stringify({ contentSid: config.contentSid, variables: { 1: username, 2: alarmName } }),
+    body: messageDetails.body ?? JSON.stringify({ contentSid: config.contentSid, variables: { 1: username, 2: alarmName } }),
     direction: 'outbound'
   });
 }
