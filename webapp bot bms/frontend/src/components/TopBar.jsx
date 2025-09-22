@@ -29,10 +29,12 @@ export default function TopBar() {
   const [alarmsError, setAlarmsError] = useState('');
   const isMounted = useRef(false);
 
-  const activeAlarmsCount = useMemo(
-    () => alarms.filter((alarm) => alarm.active).length,
+  const activeAlarms = useMemo(
+    () => alarms.filter((alarm) => alarm.active),
     [alarms],
   );
+
+  const activeAlarmsCount = activeAlarms.length;
 
   const formatCondition = (alarm) => {
     switch (alarm.conditionType) {
@@ -185,13 +187,13 @@ export default function TopBar() {
               <Typography variant="body2" color="error" sx={{ textAlign: 'center' }}>
                 {alarmsError}
               </Typography>
-            ) : alarms.length === 0 ? (
+            ) : activeAlarms.length === 0 ? (
               <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
-                No hay alarmas registradas.
+                Sin alarmas activas.
               </Typography>
             ) : (
               <List dense sx={{ py: 0 }}>
-                {alarms.map((alarm) => (
+                {activeAlarms.map((alarm) => (
                   <ListItem key={alarm._id} alignItems="flex-start" sx={{ px: 0, py: 1 }}>
                     <ListItemText
                       primary={(
