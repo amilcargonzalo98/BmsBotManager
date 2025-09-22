@@ -32,15 +32,17 @@ export async function sendWhatsApp(to, body) {
   });
 }
 
-export async function sendAlarmWhatsApp(to, message) {
+export async function sendAlarmWhatsApp(to, username, alarmName) {
   const config = await TwilioConfig.findOne();
   if (!config) throw new Error('Config not found');
   if (!config.messagingServiceSid) throw new Error('Alarm sender not configured');
+  if (!config.contentSid) throw new Error('Alarm template not configured');
 
   const params = new URLSearchParams();
   params.append('MessagingServiceSid', config.messagingServiceSid);
   params.append('To', `whatsapp:${to}`);
-  params.append('Body', message);
+  params.append('ContentSid', config.contentSid);
+  params.append('ContentVariables', JSON.stringify({ 1: username, 2: alarmName }));
 
   const url = `https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}/Messages.json`;
   const auth = Buffer.from(`${config.accountSid}:${config.authToken}`).toString('base64');
@@ -61,7 +63,7 @@ export async function sendAlarmWhatsApp(to, message) {
   await TwilioMessage.create({
     from: `messaging:${config.messagingServiceSid}`,
     to: `whatsapp:${to}`,
-    body: message,
+    body: JSON.stringify({ contentSid: config.contentSid, variables: { 1: username, 2: alarmName } }),
     direction: 'outbound'
   });
 }
