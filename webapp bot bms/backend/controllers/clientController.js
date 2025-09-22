@@ -2,6 +2,8 @@ import Client from '../models/Client.js';
 import crypto from 'crypto';
 import Point from '../models/Point.js';
 import Alarm from '../models/Alarm.js';
+import User from '../models/User.js';
+import { sendClientOfflineWhatsApp } from '../services/twilioService.js';
 
 function generateApiKey() {
   return crypto.randomBytes(32).toString('hex');
@@ -12,9 +14,39 @@ export const getClients = async (req, res) => {
     const clients = await Client.find();
     const now = Date.now();
     for (const client of clients) {
-      const connected =
-        client.lastReport && now - client.lastReport.getTime() <= 60000;
+      const connected = Boolean(
+        client.lastReport && now - client.lastReport.getTime() <= 90000
+      );
       if (client.connectionStatus !== connected) {
+        if (client.connectionStatus === true && !connected) {
+          const clientLabel =
+            client.clientName || client._id?.toString() || 'desconocido';
+          try {
+            if (client.groupId) {
+              const users = await User.find({ groupId: client.groupId });
+              for (const user of users) {
+                if (!user.phoneNum) continue;
+                try {
+                  await sendClientOfflineWhatsApp(
+                    user.phoneNum,
+                    user.username,
+                    clientLabel
+                  );
+                } catch (error) {
+                  console.error(
+                    'Error enviando WhatsApp de desconexión',
+                    error.message
+                  );
+                }
+              }
+            }
+          } catch (error) {
+            console.error(
+              'Error al notificar desconexión del cliente',
+              error.message
+            );
+          }
+        }
         client.connectionStatus = connected;
         await client.save();
       }

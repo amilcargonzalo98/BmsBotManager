@@ -36,7 +36,7 @@ export async function sendWhatsApp(to, body) {
   });
 }
 
-export async function sendAlarmWhatsApp(to, username, alarmName) {
+async function sendTemplatedWhatsApp(to, username, variable2, fallbackBody) {
   const config = await TwilioConfig.findOne();
   if (!config) throw new Error('Config not found');
   if (!config.messagingServiceSid) throw new Error('Alarm sender not configured');
@@ -46,7 +46,7 @@ export async function sendAlarmWhatsApp(to, username, alarmName) {
   params.append('MessagingServiceSid', config.messagingServiceSid);
   params.append('To', `whatsapp:${to}`);
   params.append('ContentSid', config.contentSid);
-  params.append('ContentVariables', JSON.stringify({ 1: username, 2: alarmName }));
+  params.append('ContentVariables', JSON.stringify({ 1: username, 2: variable2 }));
 
   const url = `https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}/Messages.json`;
   const auth = Buffer.from(`${config.accountSid}:${config.authToken}`).toString('base64');
@@ -79,15 +79,25 @@ export async function sendAlarmWhatsApp(to, username, alarmName) {
   }
 
   const messageDetails = await messageDetailsResponse.json();
-  const fallbackBody = (messageDetails.body ?? '').trim().length > 0
+  const finalBody = (messageDetails.body ?? '').trim().length > 0
     ? messageDetails.body
-    : `Alarma "${alarmName}" reportada para ${username}`;
+    : fallbackBody;
 
   await TwilioMessage.create({
     sid: createdMessage.sid,
     from: messageDetails.from ?? `messaging:${config.messagingServiceSid}`,
     to: `whatsapp:${to}`,
-    body: fallbackBody,
+    body: finalBody,
     direction: 'outbound'
   });
+}
+
+export async function sendAlarmWhatsApp(to, username, alarmName) {
+  const fallbackBody = `Alarma "${alarmName}" reportada para ${username}`;
+  await sendTemplatedWhatsApp(to, username, alarmName, fallbackBody);
+}
+
+export async function sendClientOfflineWhatsApp(to, username, clientName) {
+  const offlineMessage = `Cliente "${clientName}" fuera de linea`;
+  await sendTemplatedWhatsApp(to, username, offlineMessage, offlineMessage);
 }
