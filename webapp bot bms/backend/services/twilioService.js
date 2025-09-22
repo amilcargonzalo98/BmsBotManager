@@ -24,7 +24,11 @@ export async function sendWhatsApp(to, body) {
     const text = await response.text();
     throw new Error(text);
   }
+
+  const createdMessage = await response.json();
+
   await TwilioMessage.create({
+    sid: createdMessage.sid,
     from: `whatsapp:${config.whatsappFrom}`,
     to: `whatsapp:${to}`,
     body,
@@ -75,11 +79,15 @@ export async function sendAlarmWhatsApp(to, username, alarmName) {
   }
 
   const messageDetails = await messageDetailsResponse.json();
+  const fallbackBody = (messageDetails.body ?? '').trim().length > 0
+    ? messageDetails.body
+    : `Alarma "${alarmName}" reportada para ${username}`;
 
   await TwilioMessage.create({
+    sid: createdMessage.sid,
     from: messageDetails.from ?? `messaging:${config.messagingServiceSid}`,
     to: `whatsapp:${to}`,
-    body: messageDetails.body ?? JSON.stringify({ contentSid: config.contentSid, variables: { 1: username, 2: alarmName } }),
+    body: fallbackBody,
     direction: 'outbound'
   });
 }
