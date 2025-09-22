@@ -1,6 +1,7 @@
 import mongoose from '../config/database.js';
 
 const twilioMessageSchema = new mongoose.Schema({
+  sid: String,
   from: String,
   to: String,
   body: String,

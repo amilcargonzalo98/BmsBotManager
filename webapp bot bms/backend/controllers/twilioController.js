@@ -55,6 +55,7 @@ export const sendMessage = async (req, res) => {
     const data = await response.json();
 
     await TwilioMessage.create({
+      sid: data.sid,
       from: `whatsapp:${config.whatsappFrom}`,
       to: `whatsapp:${to}`,
       body,
@@ -73,6 +74,7 @@ export const twilioWebhook = async (req, res) => {
     const { From, To, Body } = req.body;
     if (From && Body) {
       await TwilioMessage.create({
+        sid: req.body.MessageSid,
         from: From,
         to: To,
         body: Body,
