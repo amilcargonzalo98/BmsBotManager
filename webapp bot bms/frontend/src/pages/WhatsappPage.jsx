@@ -102,6 +102,10 @@ export default function WhatsappPage() {
           {chatList.map(([phone, msgs]) => {
             const last = msgs[msgs.length - 1];
             const user = users.find(u => u.phoneNum === phone);
+            const previewBody = last?.body || '';
+            const limitedPreview = previewBody.length > 25
+              ? `${previewBody.slice(0, 25)}...`
+              : previewBody;
             return (
               <Box
                 key={phone}
@@ -110,16 +114,22 @@ export default function WhatsappPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1,
-                  bgcolor: selected === phone ? 'grey.300' : undefined
+                  bgcolor: selected === phone ? 'grey.300' : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease-in-out',
+                  borderLeft: selected === phone ? '4px solid #1976d2' : '4px solid transparent',
+                  '&:hover': {
+                    bgcolor: selected === phone ? 'grey.300' : 'grey.100'
+                  }
                 }}
+                onClick={() => setSelected(phone)}
               >
                 <Box
-                  onClick={() => setSelected(phone)}
-                  sx={{ cursor: 'pointer', flexGrow: 1 }}
+                  sx={{ flexGrow: 1, minWidth: 0 }}
                 >
                   <Typography variant="subtitle2">{user ? user.name : phone}</Typography>
                   <Typography variant="body2" color="text.secondary" noWrap>
-                    {last.body}
+                    {limitedPreview}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {formatDate(last.timestamp)} ({last.direction === 'outbound' ? 'tu' : (user ? user.name : phone)})
