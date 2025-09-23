@@ -358,6 +358,15 @@ export default function PanelControlPage() {
     [eventsStats, eventsPeriod],
   );
 
+  const eventsTotal = useMemo(
+    () =>
+      eventsChartData.reduce(
+        (sum, item) => sum + (typeof item.eventos === 'number' ? item.eventos : 0),
+        0,
+      ),
+    [eventsChartData],
+  );
+
   const clientsTotals = useMemo(() => {
     const total = clients.length;
     const active = clients.filter((client) => client.enabled !== false).length;
@@ -376,24 +385,24 @@ export default function PanelControlPage() {
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">Mensajes de la plataforma</Typography>
-              <FormControl size="small" sx={{ minWidth: 140 }}>
-                <InputLabel id="messages-period-label">Periodo</InputLabel>
-                <Select
-                  labelId="messages-period-label"
-                  value={messagesPeriod}
-                  label="Periodo"
-                  onChange={(event) => setMessagesPeriod(event.target.value)}
-                >
-                  {periodOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Mensajes
+            </Typography>
+            <FormControl size="small" sx={{ minWidth: 140, mb: 2, alignSelf: 'flex-start' }}>
+              <InputLabel id="messages-period-label">Periodo</InputLabel>
+              <Select
+                labelId="messages-period-label"
+                value={messagesPeriod}
+                label="Periodo"
+                onChange={(event) => setMessagesPeriod(event.target.value)}
+              >
+                {periodOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             {loadingMessages ? (
               <Box sx={centerContentSx}>
                 <CircularProgress size={32} />
@@ -408,7 +417,8 @@ export default function PanelControlPage() {
                       nameKey="name"
                       innerRadius="55%"
                       outerRadius="80%"
-                      paddingAngle={4}
+                      paddingAngle={0}
+                      stroke="none"
                     >
                       {messagesChartData.map((entry, index) => (
                         <Cell
@@ -418,7 +428,18 @@ export default function PanelControlPage() {
                       ))}
                     </Pie>
                     <Tooltip formatter={(value, name) => [`${value} mensajes`, name]} />
-                    <Legend />
+                    <Legend
+                      formatter={(value, entry) => {
+                        const label =
+                          typeof value === 'string'
+                            ? value
+                            : value != null
+                              ? String(value)
+                              : '';
+                        const total = entry?.payload?.value ?? 0;
+                        return `${label} (${total})`;
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </Box>
@@ -444,7 +465,24 @@ export default function PanelControlPage() {
               <Box sx={chartContainerSx}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={pointsChartData} dataKey="value" nameKey="name" outerRadius="80%" label>
+                    <Pie
+                      data={pointsChartData}
+                      dataKey="value"
+                      nameKey="name"
+                      outerRadius="80%"
+                      paddingAngle={0}
+                      stroke="none"
+                      label={({ name, value }) => {
+                        const labelName =
+                          typeof name === 'string'
+                            ? name
+                            : name != null
+                              ? String(name)
+                              : '';
+                        const labelValue = typeof value === 'number' ? value : 0;
+                        return `${labelName} (${labelValue})`;
+                      }}
+                    >
                       {pointsChartData.map((entry, index) => (
                         <Cell
                           key={`points-${entry.name}`}
@@ -453,7 +491,18 @@ export default function PanelControlPage() {
                       ))}
                     </Pie>
                     <Tooltip formatter={(value, name) => [`${value} puntos`, name]} />
-                    <Legend />
+                    <Legend
+                      formatter={(value, entry) => {
+                        const label =
+                          typeof value === 'string'
+                            ? value
+                            : value != null
+                              ? String(value)
+                              : '';
+                        const total = entry?.payload?.value ?? 0;
+                        return `${label} (${total})`;
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </Box>
@@ -468,24 +517,24 @@ export default function PanelControlPage() {
         </Grid>
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">Eventos registrados</Typography>
-              <FormControl size="small" sx={{ minWidth: 140 }}>
-                <InputLabel id="events-period-label">Periodo</InputLabel>
-                <Select
-                  labelId="events-period-label"
-                  value={eventsPeriod}
-                  label="Periodo"
-                  onChange={(event) => setEventsPeriod(event.target.value)}
-                >
-                  {periodOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Eventos registrados
+            </Typography>
+            <FormControl size="small" sx={{ minWidth: 140, mb: 2, alignSelf: 'flex-start' }}>
+              <InputLabel id="events-period-label">Periodo</InputLabel>
+              <Select
+                labelId="events-period-label"
+                value={eventsPeriod}
+                label="Periodo"
+                onChange={(event) => setEventsPeriod(event.target.value)}
+              >
+                {periodOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             {loadingEvents ? (
               <Box sx={centerContentSx}>
                 <CircularProgress size={32} />
@@ -498,7 +547,17 @@ export default function PanelControlPage() {
                     <XAxis dataKey="name" />
                     <YAxis allowDecimals={false} />
                     <Tooltip formatter={(value, name) => [`${value} eventos`, name]} />
-                    <Legend />
+                    <Legend
+                      formatter={(value) => {
+                        const label =
+                          typeof value === 'string'
+                            ? value
+                            : value != null
+                              ? String(value)
+                              : '';
+                        return `${label} (${eventsTotal})`;
+                      }}
+                    />
                     <Bar dataKey="eventos" name="Eventos" fill={eventsColor} radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
