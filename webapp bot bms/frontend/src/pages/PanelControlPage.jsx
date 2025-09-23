@@ -60,6 +60,18 @@ const centerContentSx = {
   justifyContent: 'center',
 };
 
+const widgetCardWidth = 420;
+
+const widgetCardSx = {
+  p: 3,
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  width: '100%',
+  maxWidth: widgetCardWidth,
+  mx: 'auto',
+};
+
 export default function PanelControlPage() {
   const [messagesPeriod, setMessagesPeriod] = useState('semanal');
   const [eventsPeriod, setEventsPeriod] = useState('semanal');
@@ -382,9 +394,9 @@ export default function PanelControlPage() {
       <Typography variant="h4" gutterBottom>
         Panel de control
       </Typography>
-      <Grid container spacing={3}>
+      <Grid container spacing={3} justifyContent="center">
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Paper sx={widgetCardSx}>
             <Typography variant="h6" sx={{ mb: 1 }}>
               Mensajes
             </Typography>
@@ -453,7 +465,7 @@ export default function PanelControlPage() {
           </Paper>
         </Grid>
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Paper sx={widgetCardSx}>
             <Typography variant="h6" sx={{ mb: 2 }}>
               Puntos por grupo
             </Typography>
@@ -516,7 +528,7 @@ export default function PanelControlPage() {
           </Paper>
         </Grid>
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Paper sx={widgetCardSx}>
             <Typography variant="h6" sx={{ mb: 1 }}>
               Eventos registrados
             </Typography>
@@ -574,10 +586,7 @@ export default function PanelControlPage() {
         <Grid item xs={12} md={6}>
           <Paper
             sx={{
-              p: 3,
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
+              ...widgetCardSx,
               justifyContent: 'center',
               alignItems: 'center',
               textAlign: 'center',
