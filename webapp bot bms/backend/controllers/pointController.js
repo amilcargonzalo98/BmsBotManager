@@ -2,6 +2,7 @@ import Client from '../models/Client.js';
 import Point from '../models/Point.js';
 import DataLog from '../models/DataLog.js';
 import Alarm from '../models/Alarm.js';
+import Event from '../models/Event.js';
 import User from '../models/User.js';
 import { sendAlarmWhatsApp } from '../services/twilioService.js';
 
@@ -70,6 +71,16 @@ export const reportState = async (req, res) => {
 
         if (triggered) {
           if (!alarm.active) {
+            try {
+              await Event.create({
+                eventType: 'Alarm',
+                pointId: point._id,
+                presentValue,
+                groupId: point.groupId || client.groupId || undefined,
+              });
+            } catch (e) {
+              console.error('Error registrando evento', e.message);
+            }
             const users = await User.find({ groupId: alarm.groupId });
             for (const u of users) {
               if (u.phoneNum) {

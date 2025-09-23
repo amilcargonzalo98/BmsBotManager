@@ -10,6 +10,7 @@ import TwilioPage from './pages/TwilioPage';
 import WhatsappPage from './pages/WhatsappPage';
 import AlarmsPage from './pages/AlarmsPage';
 import TendenciasPage from './pages/TendenciasPage';
+import EventosPage from './pages/EventosPage';
 import Layout from './components/Layout';
 import { useAuth } from './context/AuthContext';
 
@@ -78,6 +79,16 @@ export default function App() {
           <PrivateRoute>
             <Layout>
               <TendenciasPage />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/eventos"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <EventosPage />
             </Layout>
           </PrivateRoute>
         }
