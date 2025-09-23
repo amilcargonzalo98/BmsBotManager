@@ -22,6 +22,17 @@ export default function LoginPage() {
   return (
     <Container maxWidth="xs">
       <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
+          <Box
+            component="img"
+            src="/icons/isologo-100x100.png"
+            alt="FusionBMS"
+            sx={{ height: 64, width: 64, mb: 1 }}
+          />
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
+            FusionBMS
+          </Typography>
+        </Box>
         <Typography variant="h5" gutterBottom>Iniciar sesión</Typography>
         {error && <Alert severity="error" sx={{ width: '100%', mb: 2 }}>{error}</Alert>}
         <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
