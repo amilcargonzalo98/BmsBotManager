@@ -4,9 +4,12 @@ import {
   Typography,
   Box,
   TextField,
-  Button
+  Button,
+  IconButton,
+  Tooltip
 } from '@mui/material';
-import { fetchMessages, sendMessage } from '../services/twilio';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { fetchMessages, sendMessage, deleteChat as deleteChatService } from '../services/twilio';
 import { fetchUsers } from '../services/users';
 
 export default function WhatsappPage() {
@@ -47,6 +50,15 @@ export default function WhatsappPage() {
     }
   }, [chatList, selected]);
 
+  const load = async () => {
+    try {
+      const res = await fetchMessages();
+      setMessages(res.data.reverse());
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     load();
     const interval = setInterval(load, 5000);
@@ -54,12 +66,18 @@ export default function WhatsappPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const load = async () => {
+  const handleDeleteChat = async (phone) => {
+    if (!phone) return;
+    const confirmed = window.confirm('¿Deseas eliminar todos los mensajes de este chat?');
+    if (!confirmed) return;
     try {
-      const res = await fetchMessages();
-      setMessages(res.data.reverse());
-    } catch {
-      // ignore
+      await deleteChatService(phone);
+      if (selected === phone) {
+        setSelected('');
+      }
+      await load();
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -87,16 +105,37 @@ export default function WhatsappPage() {
             return (
               <Box
                 key={phone}
-                onClick={() => setSelected(phone)}
-                sx={{ p:1, cursor:'pointer', bgcolor:selected===phone?'grey.300':undefined }}
+                sx={{
+                  p: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  bgcolor: selected === phone ? 'grey.300' : undefined
+                }}
               >
-                <Typography variant="subtitle2">{user ? user.name : phone}</Typography>
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  {last.body}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {formatDate(last.timestamp)} ({last.direction === 'outbound' ? 'tu' : (user ? user.name : phone)})
-                </Typography>
+                <Box
+                  onClick={() => setSelected(phone)}
+                  sx={{ cursor: 'pointer', flexGrow: 1 }}
+                >
+                  <Typography variant="subtitle2">{user ? user.name : phone}</Typography>
+                  <Typography variant="body2" color="text.secondary" noWrap>
+                    {last.body}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {formatDate(last.timestamp)} ({last.direction === 'outbound' ? 'tu' : (user ? user.name : phone)})
+                  </Typography>
+                </Box>
+                <Tooltip title="Eliminar chat">
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteChat(phone);
+                    }}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </Box>
             );
           })}
