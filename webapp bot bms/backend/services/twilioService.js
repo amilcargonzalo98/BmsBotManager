@@ -101,3 +101,8 @@ export async function sendClientOfflineWhatsApp(to, username, clientName) {
   const offlineMessage = `Cliente "${clientName}" fuera de linea`;
   await sendTemplatedWhatsApp(to, username, offlineMessage, offlineMessage);
 }
+
+export async function sendClientOnlineWhatsApp(to, username, clientName) {
+  const onlineMessage = `Cliente "${clientName}" en linea`;
+  await sendTemplatedWhatsApp(to, username, onlineMessage, onlineMessage);
+}

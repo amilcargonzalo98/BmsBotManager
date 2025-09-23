@@ -3,7 +3,10 @@ import crypto from 'crypto';
 import Point from '../models/Point.js';
 import Alarm from '../models/Alarm.js';
 import User from '../models/User.js';
-import { sendClientOfflineWhatsApp } from '../services/twilioService.js';
+import {
+  sendClientOfflineWhatsApp,
+  sendClientOnlineWhatsApp,
+} from '../services/twilioService.js';
 
 function generateApiKey() {
   return crypto.randomBytes(32).toString('hex');
@@ -18,35 +21,38 @@ export const getClients = async (req, res) => {
         client.lastReport && now - client.lastReport.getTime() <= 90000
       );
       if (client.connectionStatus !== connected) {
-        if (client.connectionStatus === true && !connected) {
-          const clientLabel =
-            client.clientName || client._id?.toString() || 'desconocido';
+        const clientLabel =
+          client.clientName || client._id?.toString() || 'desconocido';
+
+        const notifyUsers = async (sendFn, actionLabel) => {
+          if (!client.groupId) return;
           try {
-            if (client.groupId) {
-              const users = await User.find({ groupId: client.groupId });
-              for (const user of users) {
-                if (!user.phoneNum) continue;
-                try {
-                  await sendClientOfflineWhatsApp(
-                    user.phoneNum,
-                    user.username,
-                    clientLabel
-                  );
-                } catch (error) {
-                  console.error(
-                    'Error enviando WhatsApp de desconexión',
-                    error.message
-                  );
-                }
+            const users = await User.find({ groupId: client.groupId });
+            for (const user of users) {
+              if (!user.phoneNum) continue;
+              try {
+                await sendFn(user.phoneNum, user.username, clientLabel);
+              } catch (error) {
+                console.error(
+                  `Error enviando WhatsApp de ${actionLabel}`,
+                  error.message
+                );
               }
             }
           } catch (error) {
             console.error(
-              'Error al notificar desconexión del cliente',
+              `Error al notificar ${actionLabel} del cliente`,
               error.message
             );
           }
+        };
+
+        if (client.connectionStatus === true && !connected) {
+          await notifyUsers(sendClientOfflineWhatsApp, 'desconexión');
+        } else if (client.connectionStatus === false && connected) {
+          await notifyUsers(sendClientOnlineWhatsApp, 'reconexión');
         }
+
         client.connectionStatus = connected;
         await client.save();
       }
