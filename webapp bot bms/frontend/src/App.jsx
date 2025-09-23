@@ -11,6 +11,7 @@ import WhatsappPage from './pages/WhatsappPage';
 import AlarmsPage from './pages/AlarmsPage';
 import TendenciasPage from './pages/TendenciasPage';
 import EventosPage from './pages/EventosPage';
+import PanelControlPage from './pages/PanelControlPage';
 import Layout from './components/Layout';
 import { useAuth } from './context/AuthContext';
 
@@ -23,6 +24,16 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/panel-control"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <PanelControlPage />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
       <Route
         path="/usuarios"
         element={
@@ -113,7 +124,8 @@ export default function App() {
           </PrivateRoute>
         }
       />
-      <Route path="*" element={<Navigate to="/usuarios" replace />} />
+      <Route path="/" element={<Navigate to="/panel-control" replace />} />
+      <Route path="*" element={<Navigate to="/panel-control" replace />} />
     </Routes>
   );
 }

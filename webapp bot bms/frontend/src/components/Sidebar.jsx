@@ -9,6 +9,7 @@ import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import AlarmIcon from '@mui/icons-material/NotificationsActive';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import { NavLink } from 'react-router-dom';
 
 const drawerWidth = 240;
@@ -24,6 +25,10 @@ export default function Sidebar() {
     >
       <Toolbar />
       <List>
+        <ListItemButton component={NavLink} to="/panel-control" activeClassName="Mui-selected" exact>
+          <ListItemIcon><DashboardIcon /></ListItemIcon>
+          <ListItemText primary="Panel de control" />
+        </ListItemButton>
         <ListItemButton component={NavLink} to="/usuarios" activeClassName="Mui-selected" exact>
           <ListItemIcon><PeopleIcon /></ListItemIcon>
           <ListItemText primary="Usuarios" />
