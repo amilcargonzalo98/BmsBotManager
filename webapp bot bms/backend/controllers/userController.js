@@ -30,6 +30,42 @@ export const createUser = async (req, res) => {
   }
 };
 
+export const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, phoneNum } = req.body;
+
+    const conditions = [];
+    if (username) conditions.push({ username });
+    if (phoneNum) conditions.push({ phoneNum });
+
+    if (conditions.length > 0) {
+      const existing = await User.findOne({
+        _id: { $ne: id },
+        $or: conditions,
+      });
+      if (existing) {
+        return res
+          .status(400)
+          .json({ message: 'Usuario o teléfono ya existe' });
+      }
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    res.json(updatedUser);
+  } catch (err) {
+    res.status(500).json({ message: 'Error al actualizar usuario' });
+  }
+};
+
 export const deleteUser = async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);

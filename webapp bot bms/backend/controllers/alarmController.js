@@ -18,6 +18,32 @@ export const createAlarm = async (req, res) => {
   }
 };
 
+export const updateAlarm = async (req, res) => {
+  try {
+    const updateData = { ...req.body };
+    if (
+      updateData.conditionType &&
+      updateData.conditionType !== 'gt' &&
+      updateData.conditionType !== 'lt'
+    ) {
+      updateData.threshold = null;
+    }
+
+    const alarm = await Alarm.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!alarm) {
+      return res.status(404).json({ message: 'Alarma no encontrada' });
+    }
+
+    res.json(alarm);
+  } catch (err) {
+    res.status(500).json({ message: 'Error al actualizar alarma' });
+  }
+};
+
 export const deleteAlarm = async (req, res) => {
   try {
     await Alarm.findByIdAndDelete(req.params.id);

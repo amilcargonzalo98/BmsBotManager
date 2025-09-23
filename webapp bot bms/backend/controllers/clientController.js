@@ -77,6 +77,31 @@ export const createClient = async (req, res) => {
   }
 };
 
+export const updateClient = async (req, res) => {
+  try {
+    const allowedFields = ['clientName', 'location', 'groupId', 'ipAddress'];
+    const updateData = {};
+    for (const field of allowedFields) {
+      if (field in req.body) {
+        updateData[field] = req.body[field];
+      }
+    }
+
+    const client = await Client.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!client) {
+      return res.status(404).json({ message: 'Cliente no encontrado' });
+    }
+
+    res.json(client);
+  } catch (err) {
+    res.status(500).json({ message: 'Error al actualizar cliente' });
+  }
+};
+
 export const deleteClient = async (req, res) => {
   try {
     await Client.findByIdAndDelete(req.params.id);
