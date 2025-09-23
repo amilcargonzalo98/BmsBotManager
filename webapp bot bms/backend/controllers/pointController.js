@@ -5,6 +5,8 @@ import Alarm from '../models/Alarm.js';
 import User from '../models/User.js';
 import { sendAlarmWhatsApp } from '../services/twilioService.js';
 
+const LOG_INTERVAL_MS = 15 * 60 * 1000;
+
 export const reportState = async (req, res) => {
   try {
     const { apiKey, points } = req.body;
@@ -47,7 +49,16 @@ export const reportState = async (req, res) => {
         });
       }
 
-      await DataLog.create({ pointId: point._id, presentValue });
+      const lastLog = await DataLog.findOne({ pointId: point._id })
+        .sort({ timestamp: -1 })
+        .lean();
+
+      const shouldLog =
+        !lastLog || Date.now() - new Date(lastLog.timestamp).getTime() >= LOG_INTERVAL_MS;
+
+      if (shouldLog) {
+        await DataLog.create({ pointId: point._id, presentValue });
+      }
 
       const alarms = await Alarm.find({ pointId: point._id });
       for (const alarm of alarms) {

@@ -97,3 +97,28 @@ export const getMessages = async (req, res) => {
     res.status(500).json({ message: 'Error al obtener mensajes' });
   }
 };
+
+export const deleteChat = async (req, res) => {
+  try {
+    const { phone } = req.params;
+    if (!phone) {
+      return res.status(400).json({ message: 'Teléfono requerido' });
+    }
+
+    const trimmed = phone.trim();
+    if (!trimmed) {
+      return res.status(400).json({ message: 'Teléfono requerido' });
+    }
+
+    const normalized = trimmed.startsWith('whatsapp:') ? trimmed : `whatsapp:${trimmed}`;
+
+    const result = await TwilioMessage.deleteMany({
+      $or: [{ from: normalized }, { to: normalized }]
+    });
+
+    res.json({ deletedCount: result.deletedCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al eliminar el chat' });
+  }
+};

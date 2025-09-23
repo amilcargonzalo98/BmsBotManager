@@ -5,3 +5,4 @@ export const saveConfig = (config) => axios.post('/api/twilio', config);
 export const sendTestMessage = (data) => axios.post('/api/twilio/send', data);
 export const sendMessage = (data) => axios.post('/api/twilio/send', data);
 export const fetchMessages = () => axios.get('/api/twilio/messages');
+export const deleteChat = (phone) => axios.delete(`/api/twilio/messages/${encodeURIComponent(phone)}`);
