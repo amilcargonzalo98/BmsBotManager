@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -30,64 +30,92 @@ export default function TendenciasPage() {
   const handlePointChange = (e) => {
     const id = e.target.value;
     setSelectedPoint(id);
+    setLogs([]);
     if (id) {
       fetchDataLogs(id)
         .then((res) => setLogs(res.data))
         .catch((err) => console.error(err));
-    } else {
-      setLogs([]);
     }
   };
 
-  useEffect(() => {
-    if (chartRef.current) {
-      chartRef.current.destroy();
-    }
-    if (logs.length > 0) {
-      const filtered = logs.filter((log) => {
-        const t = new Date(log.timestamp).getTime();
-        if (startDate && t < new Date(startDate).getTime()) return false;
-        if (endDate && t > new Date(endDate).getTime()) return false;
-        return true;
-      });
+  const hasAllSelections = Boolean(selectedPoint && startDate && endDate);
+  const startTime = hasAllSelections ? new Date(startDate).getTime() : null;
+  const endTime = hasAllSelections ? new Date(endDate).getTime() : null;
+  const invalidDateValues =
+    hasAllSelections && (Number.isNaN(startTime) || Number.isNaN(endTime));
+  const isDateRangeInvalid =
+    hasAllSelections && !invalidDateValues && startTime > endTime;
 
-      const ctx = document.getElementById('trend-chart').getContext('2d');
-      chartRef.current = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: filtered.map((l) => new Date(l.timestamp).toLocaleString()),
-          datasets: [
-            {
-              label: 'Valor',
-              data: filtered.map((l) => l.presentValue),
-              borderColor: '#8884d8',
-              fill: false,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          plugins: {
+  const filteredLogs = useMemo(() => {
+    if (
+      !hasAllSelections ||
+      invalidDateValues ||
+      isDateRangeInvalid ||
+      startTime === null ||
+      endTime === null
+    ) {
+      return [];
+    }
+
+    return logs.filter((log) => {
+      const timestamp = new Date(log.timestamp).getTime();
+      return timestamp >= startTime && timestamp <= endTime;
+    });
+  }, [endTime, hasAllSelections, invalidDateValues, isDateRangeInvalid, logs, startTime]);
+
+  useEffect(() => {
+    if (!hasAllSelections || filteredLogs.length === 0) {
+      return undefined;
+    }
+
+    const canvas = document.getElementById('trend-chart');
+    if (!canvas) {
+      return undefined;
+    }
+
+    const ctx = canvas.getContext('2d');
+    chartRef.current = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: filteredLogs.map((l) => new Date(l.timestamp).toLocaleString()),
+        datasets: [
+          {
+            label: 'Valor',
+            data: filteredLogs.map((l) => l.presentValue),
+            borderColor: '#8884d8',
+            fill: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          zoom: {
+            pan: { enabled: true, mode: 'x' },
             zoom: {
-              pan: { enabled: true, mode: 'x' },
-              zoom: {
-                wheel: { enabled: true },
-                pinch: { enabled: true },
-                mode: 'x',
-              },
+              wheel: { enabled: true },
+              pinch: { enabled: true },
+              mode: 'x',
             },
           },
         },
-      });
-    }
-  }, [logs, startDate, endDate]);
+      },
+    });
+
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy();
+        chartRef.current = null;
+      }
+    };
+  }, [filteredLogs, hasAllSelections]);
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
         Tendencias
       </Typography>
-      <FormControl fullWidth sx={{ mb: 3 }}>
+      <FormControl sx={{ mb: 3, width: '50%' }}>
         <InputLabel id="point-select-label">Punto</InputLabel>
         <Select
           labelId="point-select-label"
@@ -118,7 +146,24 @@ export default function TendenciasPage() {
           onChange={(e) => setEndDate(e.target.value)}
         />
       </Box>
-      {logs.length > 0 && <canvas id="trend-chart" height="100" />}
+      {!hasAllSelections && (
+        <Typography variant="body2" color="text.secondary">
+          Selecciona el punto y el rango de fechas para visualizar la tendencia.
+        </Typography>
+      )}
+      {hasAllSelections && isDateRangeInvalid && (
+        <Typography variant="body2" color="error">
+          El rango de fechas seleccionado no es válido.
+        </Typography>
+      )}
+      {hasAllSelections && !isDateRangeInvalid && filteredLogs.length === 0 && (
+        <Typography variant="body2" color="text.secondary">
+          No hay datos disponibles para los filtros seleccionados.
+        </Typography>
+      )}
+      {hasAllSelections && filteredLogs.length > 0 && (
+        <canvas id="trend-chart" height="100" />
+      )}
     </Box>
   );
 }
