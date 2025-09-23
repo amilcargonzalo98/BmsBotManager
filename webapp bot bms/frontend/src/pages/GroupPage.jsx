@@ -1,6 +1,6 @@
 // src/pages/GroupPage.jsx
 import React, { useEffect, useState } from 'react';
-import { fetchGroups, createGroup, deleteGroup } from '../services/groups';
+import { fetchGroups, createGroup, deleteGroup, updateGroup } from '../services/groups';
 import {
   Container, Typography, TextField, Button, Box,
   Paper, Table, TableHead, TableRow, TableCell, TableBody,
@@ -8,12 +8,20 @@ import {
   DialogActions, Alert
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 
 export default function GroupPage() {
   const [groups, setGroups] = useState([]);
   const [newGroup, setNewGroup] = useState({ groupName: '', description: '' });
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+  const [editGroup, setEditGroup] = useState(null);
+  const [editError, setEditError] = useState('');
+
+  const refreshGroups = async () => {
+    const { data } = await fetchGroups();
+    setGroups(data);
+  };
 
   useEffect(() => {
     fetchGroups().then(res => setGroups(res.data));
@@ -22,8 +30,7 @@ export default function GroupPage() {
   const handleAdd = async () => {
     try {
       await createGroup(newGroup);
-      const { data } = await fetchGroups();
-      setGroups(data);
+      await refreshGroups();
       setNewGroup({ groupName: '', description: '' });
       setError('');
     } catch {
@@ -34,12 +41,42 @@ export default function GroupPage() {
   const handleDelete = async () => {
     try {
       await deleteGroup(deleteId);
-      const { data } = await fetchGroups();
-      setGroups(data);
+      await refreshGroups();
     } catch {
       setError('Error al eliminar grupo');
     } finally {
       setDeleteId(null);
+    }
+  };
+
+  const handleEditOpen = (group) => {
+    setEditError('');
+    setEditGroup({
+      _id: group._id,
+      groupName: group.groupName || '',
+      description: group.description || '',
+    });
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditGroup((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleEditClose = () => {
+    setEditGroup(null);
+    setEditError('');
+  };
+
+  const handleUpdate = async () => {
+    try {
+      await updateGroup(editGroup._id, {
+        groupName: editGroup.groupName,
+        description: editGroup.description,
+      });
+      await refreshGroups();
+      handleEditClose();
+    } catch {
+      setEditError('Error al actualizar grupo');
     }
   };
 
@@ -61,6 +98,13 @@ export default function GroupPage() {
                 <TableCell>{g.groupName}</TableCell>
                 <TableCell>{g.description}</TableCell>
                 <TableCell>
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleEditOpen(g)}
+                    sx={{ mr: 1 }}
+                  >
+                    <EditIcon />
+                  </IconButton>
                   <IconButton color="error" onClick={() => setDeleteId(g._id)}>
                     <DeleteIcon />
                   </IconButton>
@@ -87,6 +131,31 @@ export default function GroupPage() {
           <Button variant="contained" onClick={handleAdd}>Agregar</Button>
         </Box>
       </Box>
+      <Dialog
+        open={Boolean(editGroup)}
+        onClose={handleEditClose}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Editar grupo</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {editError && <Alert severity="error">{editError}</Alert>}
+          <TextField
+            label="Nombre"
+            value={editGroup?.groupName || ''}
+            onChange={(e) => handleEditChange('groupName', e.target.value)}
+          />
+          <TextField
+            label="Descripción"
+            value={editGroup?.description || ''}
+            onChange={(e) => handleEditChange('description', e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditClose}>Cancelar</Button>
+          <Button variant="contained" onClick={handleUpdate}>Guardar</Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={Boolean(deleteId)} onClose={() => setDeleteId(null)}>
         <DialogTitle>Confirmar eliminación</DialogTitle>
         <DialogContent>

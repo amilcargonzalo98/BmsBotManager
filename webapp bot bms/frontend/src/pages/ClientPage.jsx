@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchClients, createClient, deleteClient, updateClientEnabled } from '../services/clients';
+import { fetchClients, createClient, deleteClient, updateClientEnabled, updateClient } from '../services/clients';
 import { fetchGroups } from '../services/groups';
 import {
   Container, Typography, TextField, Button, Box,
@@ -8,6 +8,7 @@ import {
   DialogActions, FormControl, InputLabel, Select, MenuItem, Alert
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import FiberManualRecord from '@mui/icons-material/FiberManualRecord';
@@ -21,6 +22,13 @@ export default function ClientPage() {
   const [deleteId, setDeleteId] = useState(null);
   const [showKeys, setShowKeys] = useState({});
   const [toggleInfo, setToggleInfo] = useState(null); // {id, enabled}
+  const [editClient, setEditClient] = useState(null);
+  const [editError, setEditError] = useState('');
+
+  const refreshClients = async () => {
+    const { data } = await fetchClients();
+    setClients(data);
+  };
 
   useEffect(() => {
     fetchClients().then(res => setClients(res.data));
@@ -30,8 +38,7 @@ export default function ClientPage() {
   const handleAdd = async () => {
     try {
       await createClient(newClient);
-      const { data } = await fetchClients();
-      setClients(data);
+      await refreshClients();
       setNewClient({ clientName: '', location: '', groupId: '' });
       setError('');
     } catch {
@@ -42,8 +49,7 @@ export default function ClientPage() {
   const handleDelete = async () => {
     try {
       await deleteClient(deleteId);
-      const { data } = await fetchClients();
-      setClients(data);
+      await refreshClients();
     } catch {
       setError('Error al eliminar cliente');
     } finally {
@@ -54,12 +60,46 @@ export default function ClientPage() {
   const handleToggle = async () => {
     try {
       await updateClientEnabled(toggleInfo.id, toggleInfo.enabled);
-      const { data } = await fetchClients();
-      setClients(data);
+      await refreshClients();
     } catch {
       setError('Error al actualizar cliente');
     } finally {
       setToggleInfo(null);
+    }
+  };
+
+  const handleEditOpen = (client) => {
+    setEditError('');
+    setEditClient({
+      _id: client._id,
+      clientName: client.clientName || '',
+      location: client.location || '',
+      groupId: client.groupId?._id || client.groupId || '',
+      ipAddress: client.ipAddress || '',
+    });
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditClient((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleEditClose = () => {
+    setEditClient(null);
+    setEditError('');
+  };
+
+  const handleUpdate = async () => {
+    try {
+      await updateClient(editClient._id, {
+        clientName: editClient.clientName,
+        location: editClient.location,
+        groupId: editClient.groupId,
+        ipAddress: editClient.ipAddress,
+      });
+      await refreshClients();
+      handleEditClose();
+    } catch {
+      setEditError('Error al actualizar cliente');
     }
   };
 
@@ -100,6 +140,13 @@ export default function ClientPage() {
                   </Box>
                 </TableCell>
                 <TableCell>
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleEditOpen(c)}
+                    sx={{ mr: 1 }}
+                  >
+                    <EditIcon />
+                  </IconButton>
                   <IconButton color="error" onClick={() => setDeleteId(c._id)}>
                     <DeleteIcon />
                   </IconButton>
@@ -145,6 +192,49 @@ export default function ClientPage() {
           <Button variant="contained" onClick={handleAdd}>Agregar</Button>
         </Box>
       </Box>
+      <Dialog
+        open={Boolean(editClient)}
+        onClose={handleEditClose}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Editar cliente</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {editError && <Alert severity="error">{editError}</Alert>}
+          <TextField
+            label="Nombre"
+            value={editClient?.clientName || ''}
+            onChange={(e) => handleEditChange('clientName', e.target.value)}
+          />
+          <TextField
+            label="IP"
+            value={editClient?.ipAddress || ''}
+            onChange={(e) => handleEditChange('ipAddress', e.target.value)}
+          />
+          <TextField
+            label="Ubicación"
+            value={editClient?.location || ''}
+            onChange={(e) => handleEditChange('location', e.target.value)}
+          />
+          <FormControl fullWidth>
+            <InputLabel id="edit-client-group-label">Grupo</InputLabel>
+            <Select
+              labelId="edit-client-group-label"
+              label="Grupo"
+              value={editClient?.groupId || ''}
+              onChange={(e) => handleEditChange('groupId', e.target.value)}
+            >
+              {groups.map((g) => (
+                <MenuItem key={g._id} value={g._id}>{g.groupName}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditClose}>Cancelar</Button>
+          <Button variant="contained" onClick={handleUpdate}>Guardar</Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={Boolean(deleteId)} onClose={() => setDeleteId(null)}>
         <DialogTitle>Confirmar eliminación</DialogTitle>
         <DialogContent>

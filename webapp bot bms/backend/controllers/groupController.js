@@ -18,6 +18,21 @@ export const createGroup = async (req, res) => {
   }
 };
 
+export const updateGroup = async (req, res) => {
+  try {
+    const updatedGroup = await Group.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    if (!updatedGroup) {
+      return res.status(404).json({ message: 'Grupo no encontrado' });
+    }
+    res.json(updatedGroup);
+  } catch (err) {
+    res.status(500).json({ message: 'Error al actualizar grupo' });
+  }
+};
+
 export const deleteGroup = async (req, res) => {
   try {
     await Group.findByIdAndDelete(req.params.id);

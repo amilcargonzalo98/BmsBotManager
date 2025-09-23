@@ -24,7 +24,8 @@ import {
   Alert,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { fetchAlarms, createAlarm, deleteAlarm } from '../services/alarms';
+import EditIcon from '@mui/icons-material/Edit';
+import { fetchAlarms, createAlarm, deleteAlarm, updateAlarm } from '../services/alarms';
 import { fetchPoints } from '../services/points';
 import { fetchGroups } from '../services/groups';
 import { fetchClients } from '../services/clients';
@@ -32,6 +33,7 @@ import { fetchClients } from '../services/clients';
 export default function AlarmsPage() {
   const [alarms, setAlarms] = useState([]);
   const [points, setPoints] = useState([]);
+  const [allPoints, setAllPoints] = useState([]);
   const [groups, setGroups] = useState([]);
   const [clients, setClients] = useState([]);
   const [filterGroup, setFilterGroup] = useState('');
@@ -39,6 +41,8 @@ export default function AlarmsPage() {
   const [newAlarm, setNewAlarm] = useState({ alarmName: '', pointId: '', groupId: '', conditionType: 'true', threshold: '' });
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+  const [editAlarm, setEditAlarm] = useState(null);
+  const [editError, setEditError] = useState('');
 
   useEffect(() => {
     load();
@@ -47,7 +51,12 @@ export default function AlarmsPage() {
   }, []);
 
   useEffect(() => {
-    fetchPoints(clientFilter, '').then(res => setPoints(res.data));
+    fetchPoints(clientFilter, '').then(res => {
+      setPoints(res.data);
+      if (!clientFilter) {
+        setAllPoints(res.data);
+      }
+    });
   }, [clientFilter]);
 
   const load = async () => {
@@ -74,6 +83,61 @@ export default function AlarmsPage() {
       setError('Error al eliminar alarma');
     } finally {
       setDeleteId(null);
+    }
+  };
+
+  const handleEditOpen = (alarm) => {
+    setEditError('');
+    setEditAlarm({
+      _id: alarm._id,
+      alarmName: alarm.alarmName || '',
+      pointId: alarm.pointId?._id || alarm.pointId || '',
+      groupId: alarm.groupId?._id || alarm.groupId || '',
+      conditionType: alarm.conditionType || 'true',
+      threshold:
+        alarm.conditionType === 'gt' || alarm.conditionType === 'lt'
+          ? alarm.threshold ?? ''
+          : '',
+    });
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditAlarm((prev) => {
+      if (!prev) return prev;
+      if (field === 'conditionType') {
+        return {
+          ...prev,
+          conditionType: value,
+          threshold:
+            value === 'gt' || value === 'lt' ? prev.threshold || '' : '',
+        };
+      }
+      return { ...prev, [field]: value };
+    });
+  };
+
+  const handleEditClose = () => {
+    setEditAlarm(null);
+    setEditError('');
+  };
+
+  const handleUpdate = async () => {
+    if (!editAlarm) return;
+    try {
+      await updateAlarm(editAlarm._id, {
+        alarmName: editAlarm.alarmName,
+        pointId: editAlarm.pointId,
+        groupId: editAlarm.groupId,
+        conditionType: editAlarm.conditionType,
+        threshold:
+          editAlarm.conditionType === 'gt' || editAlarm.conditionType === 'lt'
+            ? editAlarm.threshold
+            : null,
+      });
+      await load();
+      handleEditClose();
+    } catch {
+      setEditError('Error al actualizar alarma');
     }
   };
 
@@ -122,6 +186,13 @@ export default function AlarmsPage() {
                 </TableCell>
                 <TableCell>{a.groupId?.groupName || a.groupId}</TableCell>
                 <TableCell>
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleEditOpen(a)}
+                    sx={{ mr: 1 }}
+                  >
+                    <EditIcon />
+                  </IconButton>
                   <IconButton color="error" onClick={() => setDeleteId(a._id)}>
                     <DeleteIcon />
                   </IconButton>
@@ -205,6 +276,74 @@ export default function AlarmsPage() {
           <Button variant="contained" onClick={handleAdd}>Agregar</Button>
         </Box>
       </Box>
+      <Dialog
+        open={Boolean(editAlarm)}
+        onClose={handleEditClose}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Editar alarma</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {editError && <Alert severity="error">{editError}</Alert>}
+          <TextField
+            label="Nombre"
+            value={editAlarm?.alarmName || ''}
+            onChange={(e) => handleEditChange('alarmName', e.target.value)}
+          />
+          <FormControl fullWidth>
+            <InputLabel id="edit-point-label">Punto</InputLabel>
+            <Select
+              labelId="edit-point-label"
+              label="Punto"
+              value={editAlarm?.pointId || ''}
+              onChange={(e) => handleEditChange('pointId', e.target.value)}
+            >
+              {allPoints.map((p) => (
+                <MenuItem key={p._id} value={p._id}>{p.pointName}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel id="edit-group-label">Grupo</InputLabel>
+            <Select
+              labelId="edit-group-label"
+              label="Grupo"
+              value={editAlarm?.groupId || ''}
+              onChange={(e) => handleEditChange('groupId', e.target.value)}
+            >
+              {groups.map((g) => (
+                <MenuItem key={g._id} value={g._id}>{g.groupName}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel id="edit-cond-label">Condición</InputLabel>
+            <Select
+              labelId="edit-cond-label"
+              label="Condición"
+              value={editAlarm?.conditionType || 'true'}
+              onChange={(e) => handleEditChange('conditionType', e.target.value)}
+            >
+              <MenuItem value="true">== true</MenuItem>
+              <MenuItem value="false">== false</MenuItem>
+              <MenuItem value="gt">&gt;=</MenuItem>
+              <MenuItem value="lt">&lt;=</MenuItem>
+            </Select>
+          </FormControl>
+          {(editAlarm?.conditionType === 'gt' || editAlarm?.conditionType === 'lt') && (
+            <TextField
+              label="Valor"
+              type="number"
+              value={editAlarm?.threshold ?? ''}
+              onChange={(e) => handleEditChange('threshold', e.target.value)}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditClose}>Cancelar</Button>
+          <Button variant="contained" onClick={handleUpdate}>Guardar</Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={Boolean(deleteId)} onClose={() => setDeleteId(null)}>
         <DialogTitle>Confirmar eliminación</DialogTitle>
         <DialogContent>
