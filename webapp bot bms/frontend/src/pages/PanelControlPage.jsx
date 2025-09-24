@@ -67,7 +67,7 @@ const widgetCardSx = {
   height: '100%',
   display: 'flex',
   flexDirection: 'column',
-  width: '100%',
+  width: '150%',
   maxWidth: widgetCardWidth,
   mx: 'auto',
 };
