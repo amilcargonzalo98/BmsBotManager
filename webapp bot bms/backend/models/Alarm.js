@@ -2,10 +2,28 @@ import mongoose from '../config/database.js';
 
 const alarmSchema = new mongoose.Schema({
   alarmName: { type: String, required: true },
-  pointId: { type: mongoose.Schema.Types.ObjectId, ref: 'Point', required: true },
+  monitorType: {
+    type: String,
+    enum: ['point', 'clientConnection'],
+    default: 'point',
+  },
+  pointId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Point',
+    required() {
+      return (this.monitorType ?? 'point') === 'point';
+    },
+  },
+  clientId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Client',
+    required() {
+      return (this.monitorType ?? 'point') === 'clientConnection';
+    },
+  },
   groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group', required: true },
   conditionType: { type: String, enum: ['true', 'false', 'gt', 'lt'], required: true },
-  threshold: mongoose.Schema.Types.Mixed,
+  threshold: { type: Number, default: null },
   active: { type: Boolean, default: false },
 });
 
