@@ -13,8 +13,17 @@ import {
   Select,
   MenuItem,
   Box,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Alert,
 } from '@mui/material';
-import { fetchPoints } from '../services/points';
+import EditIcon from '@mui/icons-material/Edit';
+import { fetchPoints, updatePointGroup } from '../services/points';
 import { fetchClients } from '../services/clients';
 import { fetchGroups } from '../services/groups';
 
@@ -24,6 +33,10 @@ export default function PuntosPage() {
   const [groups, setGroups] = useState([]);
   const [clientId, setClientId] = useState('');
   const [groupId, setGroupId] = useState('');
+  const [editPoint, setEditPoint] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState('');
+  const [editError, setEditError] = useState('');
+  const [savingGroup, setSavingGroup] = useState(false);
 
   const typeAcronyms = {
     0: 'AI',
@@ -63,6 +76,35 @@ export default function PuntosPage() {
   useEffect(() => {
     loadPoints(clientId, groupId);
   }, [clientId, groupId]);
+
+  const handleEditGroupOpen = (point) => {
+    const currentGroup =
+      typeof point.groupId === 'object' ? point.groupId?._id : point.groupId || '';
+    setEditPoint(point);
+    setSelectedGroup(currentGroup || '');
+    setEditError('');
+  };
+
+  const handleEditGroupClose = () => {
+    setEditPoint(null);
+    setSelectedGroup('');
+    setEditError('');
+    setSavingGroup(false);
+  };
+
+  const handleEditGroupSave = async () => {
+    if (!editPoint) return;
+    try {
+      setSavingGroup(true);
+      await updatePointGroup(editPoint._id, selectedGroup || null);
+      await loadPoints(clientId, groupId);
+      handleEditGroupClose();
+    } catch (error) {
+      console.error('Error al actualizar el grupo del punto', error);
+      setEditError('Error al actualizar el grupo del punto');
+      setSavingGroup(false);
+    }
+  };
 
   return (
     <Container>
@@ -114,6 +156,7 @@ export default function PuntosPage() {
               <TableCell>Cliente</TableCell>
               <TableCell>Grupo</TableCell>
               <TableCell>Last Value</TableCell>
+              <TableCell align="center">Editar Grupo</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -162,11 +205,64 @@ export default function PuntosPage() {
                       ).toLocaleString()})`
                     : 'N/A'}
                 </TableCell>
+                <TableCell align="center">
+                  <Tooltip title="Editar grupo">
+                    <IconButton
+                      color="primary"
+                      size="small"
+                      onClick={() => handleEditGroupOpen(p)}
+                    >
+                      <EditIcon fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Paper>
+      <Dialog
+        open={Boolean(editPoint)}
+        onClose={handleEditGroupClose}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Editar grupo del punto</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          {editError && <Alert severity="error">{editError}</Alert>}
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            {editPoint?.pointName}
+          </Typography>
+          <FormControl fullWidth>
+            <InputLabel id="edit-group-select-label">Grupo</InputLabel>
+            <Select
+              labelId="edit-group-select-label"
+              value={selectedGroup}
+              label="Grupo"
+              onChange={(e) => setSelectedGroup(e.target.value)}
+            >
+              <MenuItem value="">
+                <em>Sin grupo</em>
+              </MenuItem>
+              {groups.map((g) => (
+                <MenuItem key={g._id} value={g._id}>
+                  {g.groupName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditGroupClose}>Cancelar</Button>
+          <Button
+            onClick={handleEditGroupSave}
+            variant="contained"
+            disabled={savingGroup}
+          >
+            Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

@@ -41,14 +41,25 @@ export const reportState = async (req, res) => {
       const { pointName, ipAddress, pointType, pointId, presentValue } = p;
 
       let point = await Point.findOne({ pointName, clientId: client._id });
+      const now = new Date();
+
       if (!point) {
         point = await Point.create({
           pointName,
           ipAddress,
           pointType,
           pointId,
-          clientId: client._id
+          clientId: client._id,
+          lastPresentValue: presentValue,
+          lastUpdate: now,
         });
+      } else {
+        point.ipAddress = ipAddress;
+        point.pointType = pointType;
+        point.pointId = pointId;
+        point.lastPresentValue = presentValue;
+        point.lastUpdate = now;
+        await point.save();
       }
 
       const lastLog = await DataLog.findOne({ pointId: point._id })
@@ -56,10 +67,10 @@ export const reportState = async (req, res) => {
         .lean();
 
       const shouldLog =
-        !lastLog || Date.now() - new Date(lastLog.timestamp).getTime() >= LOG_INTERVAL_MS;
+        !lastLog || now.getTime() - new Date(lastLog.timestamp).getTime() >= LOG_INTERVAL_MS;
 
       if (shouldLog) {
-        await DataLog.create({ pointId: point._id, presentValue });
+        await DataLog.create({ pointId: point._id, presentValue, timestamp: now });
       }
 
       const alarms = await Alarm.find({ pointId: point._id });
@@ -145,11 +156,21 @@ export const getPoints = async (req, res) => {
 
     const result = await Promise.all(
       points.map(async (p) => {
+        const { lastPresentValue, lastUpdate, ...rest } = p;
+
+        if (typeof lastPresentValue !== 'undefined' && lastUpdate) {
+          return {
+            ...rest,
+            lastValue: { presentValue: lastPresentValue, timestamp: lastUpdate },
+          };
+        }
+
         const lastLog = await DataLog.findOne({ pointId: p._id })
           .sort({ timestamp: -1 })
           .lean();
+
         return {
-          ...p,
+          ...rest,
           lastValue: lastLog
             ? { presentValue: lastLog.presentValue, timestamp: lastLog.timestamp }
             : null,
@@ -160,5 +181,68 @@ export const getPoints = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al obtener puntos' });
+  }
+};
+
+export const updatePointGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { groupId } = req.body || {};
+
+    const point = await Point.findById(id);
+    if (!point) {
+      return res.status(404).json({ message: 'Punto no encontrado' });
+    }
+
+    let targetGroup = null;
+    if (groupId) {
+      targetGroup = await Group.findById(groupId);
+      if (!targetGroup) {
+        return res.status(404).json({ message: 'Grupo no encontrado' });
+      }
+    }
+
+    const operations = [];
+    if (groupId) {
+      operations.push(
+        Group.updateMany(
+          { _id: { $ne: targetGroup._id }, points: point._id },
+          { $pull: { points: point._id } }
+        )
+      );
+      operations.push(
+        Group.updateOne({ _id: targetGroup._id }, { $addToSet: { points: point._id } })
+      );
+      point.groupId = targetGroup._id;
+    } else {
+      operations.push(
+        Group.updateMany({ points: point._id }, { $pull: { points: point._id } })
+      );
+      point.groupId = null;
+    }
+
+    if (operations.length > 0) {
+      await Promise.all(operations);
+    }
+
+    await point.save();
+
+    const updatedPoint = await Point.findById(point._id)
+      .populate('clientId')
+      .populate('groupId')
+      .lean();
+
+    const { lastPresentValue, lastUpdate, ...rest } = updatedPoint;
+
+    res.json({
+      ...rest,
+      lastValue:
+        typeof lastPresentValue !== 'undefined' && lastUpdate
+          ? { presentValue: lastPresentValue, timestamp: lastUpdate }
+          : null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al actualizar grupo del punto' });
   }
 };
