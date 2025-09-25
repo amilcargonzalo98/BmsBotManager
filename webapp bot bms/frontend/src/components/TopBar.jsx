@@ -36,26 +36,12 @@ export default function TopBar() {
 
   const activeAlarmsCount = activeAlarms.length;
 
-  const getAlarmTargetLabel = (alarm) => {
-    if ((alarm.monitorType ?? 'point') === 'clientConnection') {
-      let clientName = '';
-      if (alarm.clientId && typeof alarm.clientId === 'object') {
-        clientName = alarm.clientId.clientName || alarm.clientId.name || '';
-      } else if (typeof alarm.clientId === 'string') {
-        clientName = alarm.clientId;
-      }
-      return `${clientName || 'Cliente'} — Client connection status`;
-    }
-    return alarm.pointId?.pointName || alarm.pointId || 'Sin asignar';
-  };
-
   const formatCondition = (alarm) => {
-    const suffix = (alarm.monitorType ?? 'point') === 'clientConnection' ? ' s' : '';
     switch (alarm.conditionType) {
       case 'gt':
-        return `>= ${alarm.threshold ?? '-'}${suffix}`;
+        return `>= ${alarm.threshold ?? '-'}`;
       case 'lt':
-        return `<= ${alarm.threshold ?? '-'}${suffix}`;
+        return `<= ${alarm.threshold ?? '-'}`;
       case 'true':
         return '== true';
       case 'false':
@@ -218,7 +204,7 @@ export default function TopBar() {
                       secondary={(
                         <>
                           <Typography variant="body2" color="text.secondary">
-                            Punto: {getAlarmTargetLabel(alarm)}
+                            Punto: {alarm.pointId?.pointName || alarm.pointId || 'Sin asignar'}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
                             Grupo: {alarm.groupId?.groupName || alarm.groupId || 'Sin asignar'}
