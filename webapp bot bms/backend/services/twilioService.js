@@ -99,10 +99,10 @@ export async function sendAlarmWhatsApp(to, username, alarmName) {
 
 export async function sendClientOfflineWhatsApp(to, username, clientName) {
   const offlineMessage = `Cliente "${clientName}" fuera de linea`;
-  await sendTemplatedWhatsApp(to, username, offlineMessage, offlineMessage);
+  await sendTemplatedWhatsApp(to, username, clientName, offlineMessage);
 }
 
 export async function sendClientOnlineWhatsApp(to, username, clientName) {
   const onlineMessage = `Cliente "${clientName}" en linea`;
-  await sendTemplatedWhatsApp(to, username, onlineMessage, onlineMessage);
+  await sendTemplatedWhatsApp(to, username, clientName, onlineMessage);
 }
