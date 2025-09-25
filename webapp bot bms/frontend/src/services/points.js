@@ -6,3 +6,6 @@ export const fetchPoints = (clientId, groupId) => {
   if (groupId) params.groupId = groupId;
   return axios.get('/api/points', { params });
 };
+
+export const updatePointGroup = (id, groupId) =>
+  axios.patch(`/api/points/${id}/group`, { groupId });
