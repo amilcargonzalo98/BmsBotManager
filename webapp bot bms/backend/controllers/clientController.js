@@ -2,7 +2,7 @@ import Client from '../models/Client.js';
 import crypto from 'crypto';
 import Point from '../models/Point.js';
 import Alarm from '../models/Alarm.js';
-import User from '../models/User.js';
+import Group from '../models/Group.js';
 import {
   sendClientOfflineWhatsApp,
   sendClientOnlineWhatsApp,
@@ -25,18 +25,30 @@ export const getClients = async (req, res) => {
           client.clientName || client._id?.toString() || 'desconocido';
 
         const notifyUsers = async (sendFn, actionLabel) => {
-          if (!client.groupId) return;
           try {
-            const users = await User.find({ groupId: client.groupId });
-            for (const user of users) {
-              if (!user.phoneNum) continue;
-              try {
-                await sendFn(user.phoneNum, user.username, clientLabel);
-              } catch (error) {
-                console.error(
-                  `Error enviando WhatsApp de ${actionLabel}`,
-                  error.message
-                );
+            const relatedPoints = await Point.find({ clientId: client._id }).select('_id');
+            if (relatedPoints.length === 0) {
+              return;
+            }
+            const pointIds = relatedPoints.map((p) => p._id);
+            const groups = await Group.find({ points: { $in: pointIds } })
+              .populate({ path: 'users', select: 'phoneNum username' })
+              .lean();
+
+            const notified = new Set();
+            for (const group of groups) {
+              if (!Array.isArray(group.users)) continue;
+              for (const user of group.users) {
+                if (!user?.phoneNum || notified.has(user.phoneNum)) continue;
+                try {
+                  await sendFn(user.phoneNum, user.username, clientLabel);
+                  notified.add(user.phoneNum);
+                } catch (error) {
+                  console.error(
+                    `Error enviando WhatsApp de ${actionLabel}`,
+                    error.message
+                  );
+                }
               }
             }
           } catch (error) {
@@ -79,7 +91,7 @@ export const createClient = async (req, res) => {
 
 export const updateClient = async (req, res) => {
   try {
-    const allowedFields = ['clientName', 'location', 'groupId', 'ipAddress'];
+    const allowedFields = ['clientName', 'location', 'ipAddress'];
     const updateData = {};
     for (const field of allowedFields) {
       if (field in req.body) {

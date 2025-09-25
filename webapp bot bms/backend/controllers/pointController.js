@@ -4,6 +4,7 @@ import DataLog from '../models/DataLog.js';
 import Alarm from '../models/Alarm.js';
 import Event from '../models/Event.js';
 import User from '../models/User.js';
+import Group from '../models/Group.js';
 import { sendAlarmWhatsApp } from '../services/twilioService.js';
 
 const LOG_INTERVAL_MS = 15 * 60 * 1000;
@@ -76,7 +77,7 @@ export const reportState = async (req, res) => {
                 eventType: 'Alarm',
                 pointId: point._id,
                 presentValue,
-                groupId: point.groupId || client.groupId || undefined,
+                groupId: point.groupId || undefined,
               });
             } catch (e) {
               console.error('Error registrando evento', e.message);
@@ -111,6 +112,7 @@ export const reportState = async (req, res) => {
       await Promise.all([
         Point.deleteMany({ _id: { $in: ids } }),
         Alarm.deleteMany({ pointId: { $in: ids } }),
+        Group.updateMany({ points: { $in: ids } }, { $pull: { points: { $in: ids } } }),
       ]);
     }
 
@@ -131,11 +133,7 @@ export const getPoints = async (req, res) => {
     }
 
     if (groupId) {
-      const clients = await Client.find({ groupId }).select('_id');
-      const clientIds = clients.map((c) => c._id);
-      andConditions.push({
-        $or: [{ groupId }, { clientId: { $in: clientIds } }],
-      });
+      andConditions.push({ groupId });
     }
 
     const filter = andConditions.length > 0 ? { $and: andConditions } : {};

@@ -129,17 +129,30 @@ export default function PuntosPage() {
                 <TableCell>{p.clientId?.clientName || p.clientId}</TableCell>
                 <TableCell>
                   {(() => {
-                    const cidGroup = p.clientId?.groupId;
-                    if (cidGroup && typeof cidGroup === 'object') {
-                      return cidGroup.groupName;
+                    const directGroup = p.groupId;
+                    if (directGroup) {
+                      if (typeof directGroup === 'object') {
+                        return (
+                          directGroup.groupName ||
+                          groups.find((g) => g._id === directGroup._id)?.groupName ||
+                          directGroup._id ||
+                          'Sin grupo'
+                        );
+                      }
+                      const fromList = groups.find((g) => g._id === directGroup);
+                      if (fromList) {
+                        return fromList.groupName;
+                      }
+                      return directGroup;
                     }
-                    return (
-                      groups.find((g) => g._id === cidGroup)?.groupName ||
-                      p.groupId?.groupName ||
-                      cidGroup ||
-                      p.groupId ||
-                      'N/A'
+                    const fromGroups = groups.find((g) =>
+                      Array.isArray(g.points) &&
+                      g.points.some((point) => {
+                        const pointId = typeof point === 'string' ? point : point?._id;
+                        return pointId === p._id;
+                      })
                     );
+                    return fromGroups?.groupName || 'Sin grupo';
                   })()}
                 </TableCell>
                 <TableCell>

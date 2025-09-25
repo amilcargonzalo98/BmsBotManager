@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import Group from '../models/Group.js';
 
 export const login = async (req, res) => {
   const { username, password } = req.body;
@@ -24,6 +25,15 @@ export const createUser = async (req, res) => {
       return res.status(400).json({ message: 'Usuario o teléfono ya existe' });
     }
     const newUser = await User.create(req.body);
+    if (newUser.groupId) {
+      await Promise.all([
+        Group.findByIdAndUpdate(newUser.groupId, { $addToSet: { users: newUser._id } }),
+        Group.updateMany(
+          { _id: { $ne: newUser.groupId }, users: newUser._id },
+          { $pull: { users: newUser._id } }
+        ),
+      ]);
+    }
     res.status(201).json(newUser);
   } catch (err) {
     res.status(500).json({ message: 'Error al crear usuario' });
@@ -51,13 +61,48 @@ export const updateUser = async (req, res) => {
       }
     }
 
-    const updatedUser = await User.findByIdAndUpdate(id, req.body, {
-      new: true,
-      runValidators: true,
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    const previousGroup = user.groupId ? user.groupId.toString() : null;
+
+    Object.entries(req.body).forEach(([key, value]) => {
+      if (typeof value !== 'undefined') {
+        user[key] = value;
+      }
     });
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
+    const updatedUser = await user.save();
+
+    const currentGroup = updatedUser.groupId
+      ? updatedUser.groupId.toString()
+      : null;
+
+    const operations = [];
+
+    if (previousGroup && previousGroup !== currentGroup) {
+      operations.push(
+        Group.findByIdAndUpdate(previousGroup, { $pull: { users: updatedUser._id } })
+      );
+    }
+
+    if (currentGroup) {
+      operations.push(
+        Group.findByIdAndUpdate(currentGroup, { $addToSet: { users: updatedUser._id } })
+      );
+      operations.push(
+        Group.updateMany(
+          { _id: { $ne: currentGroup }, users: updatedUser._id },
+          { $pull: { users: updatedUser._id } }
+        )
+      );
+    }
+
+    if (operations.length > 0) {
+      await Promise.all(operations);
     }
 
     res.json(updatedUser);
@@ -68,7 +113,10 @@ export const updateUser = async (req, res) => {
 
 export const deleteUser = async (req, res) => {
   try {
-    await User.findByIdAndDelete(req.params.id);
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (user?.groupId) {
+      await Group.findByIdAndUpdate(user.groupId, { $pull: { users: user._id } });
+    }
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ message: 'Error al eliminar usuario' });

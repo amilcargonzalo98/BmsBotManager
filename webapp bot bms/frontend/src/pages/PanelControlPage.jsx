@@ -231,12 +231,29 @@ export default function PanelControlPage() {
     return map;
   }, [groups]);
 
+  const groupByPointId = useMemo(() => {
+    const map = new Map();
+    groups.forEach((group) => {
+      const groupLabel = group.groupName || group.name || group._id;
+      if (!Array.isArray(group.points)) {
+        return;
+      }
+      group.points.forEach((point) => {
+        const pointId = typeof point === 'string' ? point : point?._id;
+        if (pointId) {
+          map.set(pointId, groupLabel);
+        }
+      });
+    });
+    return map;
+  }, [groups]);
+
   const resolveGroupName = useCallback((value) => {
     if (!value) {
       return '';
     }
     if (typeof value === 'string') {
-      return groupNameById.get(value) || value;
+      return groupNameById.get(value) || groupByPointId.get(value) || value;
     }
     if (typeof value === 'object') {
       if (value.groupName) {
@@ -246,11 +263,11 @@ export default function PanelControlPage() {
         return value.name;
       }
       if (value._id) {
-        return groupNameById.get(value._id) || '';
+        return groupNameById.get(value._id) || groupByPointId.get(value._id) || '';
       }
     }
     return '';
-  }, [groupNameById]);
+  }, [groupByPointId, groupNameById]);
 
   const messagesStats = useMemo(() => {
     const template = {
@@ -302,19 +319,23 @@ export default function PanelControlPage() {
     }
     const counts = new Map();
     points.forEach((point) => {
-      const groupLabel =
-        resolveGroupName(point.groupId) ||
-        resolveGroupName(point.clientId?.groupId) ||
-        resolveGroupName(point.clientId?.group) ||
-        resolveGroupName(point.pointGroup) ||
-        'Sin grupo';
+      let groupLabel = resolveGroupName(point.groupId);
+      if (!groupLabel) {
+        const pointId = typeof point._id === 'string' ? point._id : point?._id;
+        if (pointId) {
+          groupLabel = groupByPointId.get(pointId) || '';
+        }
+      }
+      if (!groupLabel) {
+        groupLabel = 'Sin grupo';
+      }
       counts.set(groupLabel, (counts.get(groupLabel) || 0) + 1);
     });
 
     return Array.from(counts.entries())
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-  }, [points, resolveGroupName]);
+  }, [groupByPointId, points, resolveGroupName]);
 
   const eventsStats = useMemo(() => {
     const template = {
@@ -338,12 +359,24 @@ export default function PanelControlPage() {
         return;
       }
 
-      const groupLabel =
+      let groupLabel =
         resolveGroupName(event.groupId) ||
-        resolveGroupName(event.pointId?.groupId) ||
-        resolveGroupName(event.pointId?.clientId?.groupId) ||
-        resolveGroupName(event.clientId?.groupId) ||
-        'Sin grupo';
+        resolveGroupName(event.pointId?.groupId);
+
+      if (!groupLabel) {
+        const pointRef = event.pointId;
+        const pointId =
+          typeof pointRef === 'string'
+            ? pointRef
+            : pointRef?._id || pointRef?.id;
+        if (pointId) {
+          groupLabel = groupByPointId.get(pointId) || '';
+        }
+      }
+
+      if (!groupLabel) {
+        groupLabel = 'Sin grupo';
+      }
 
       Object.entries(periodDurations).forEach(([period, duration]) => {
         if (now - timestamp <= duration) {
@@ -363,7 +396,7 @@ export default function PanelControlPage() {
       semanal: toArray(template.semanal),
       mensual: toArray(template.mensual),
     };
-  }, [events, resolveGroupName]);
+  }, [events, groupByPointId, resolveGroupName]);
 
   const eventsChartData = useMemo(
     () => eventsStats[eventsPeriod] || [],
