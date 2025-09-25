@@ -2,8 +2,11 @@ import Client from '../models/Client.js';
 import crypto from 'crypto';
 import Point from '../models/Point.js';
 import Alarm from '../models/Alarm.js';
-import User from '../models/User.js';
-import { sendAlarmWhatsApp } from '../services/twilioService.js';
+import Group from '../models/Group.js';
+import {
+  sendClientOfflineWhatsApp,
+  sendClientOnlineWhatsApp,
+} from '../services/twilioService.js';
 
 function generateApiKey() {
   return crypto.randomBytes(32).toString('hex');
@@ -11,71 +14,59 @@ function generateApiKey() {
 
 export const getClients = async (req, res) => {
   try {
-    const [clients, connectionAlarms] = await Promise.all([
-      Client.find(),
-      Alarm.find({ monitorType: 'clientConnection' }),
-    ]);
-
-    const alarmsByClient = new Map();
-    for (const alarm of connectionAlarms) {
-      const clientKey = alarm.clientId?.toString();
-      if (!clientKey) continue;
-      if (!alarmsByClient.has(clientKey)) {
-        alarmsByClient.set(clientKey, []);
-      }
-      alarmsByClient.get(clientKey).push(alarm);
-    }
-
+    const clients = await Client.find();
     const now = Date.now();
     for (const client of clients) {
       const connected = Boolean(
         client.lastReport && now - client.lastReport.getTime() <= 90000
       );
-
       if (client.connectionStatus !== connected) {
-        client.connectionStatus = connected;
-        await client.save();
-      }
+        const clientLabel =
+          client.clientName || client._id?.toString() || 'desconocido';
 
-      const clientAlarms = alarmsByClient.get(client._id.toString());
-      if (!clientAlarms || clientAlarms.length === 0) {
-        continue;
-      }
-
-      const secondsWithoutReport =
-        client.lastReport instanceof Date
-          ? (now - client.lastReport.getTime()) / 1000
-          : Number.POSITIVE_INFINITY;
-
-      for (const alarm of clientAlarms) {
-        let triggered = false;
-        const threshold = Number(alarm.threshold ?? 0);
-        if (alarm.conditionType === 'gt') {
-          triggered = secondsWithoutReport >= threshold;
-        } else if (alarm.conditionType === 'lt') {
-          triggered = secondsWithoutReport <= threshold;
-        }
-
-        if (triggered && !alarm.active) {
+        const notifyUsers = async (sendFn, actionLabel) => {
           try {
-            const users = await User.find({ groupId: alarm.groupId });
-            for (const u of users) {
-              if (!u?.phoneNum) continue;
-              try {
-                await sendAlarmWhatsApp(u.phoneNum, u.username, alarm.alarmName);
-              } catch (error) {
-                console.error('Error enviando WhatsApp de alarma', error.message);
+            const relatedPoints = await Point.find({ clientId: client._id }).select('_id');
+            if (relatedPoints.length === 0) {
+              return;
+            }
+            const pointIds = relatedPoints.map((p) => p._id);
+            const groups = await Group.find({ points: { $in: pointIds } })
+              .populate({ path: 'users', select: 'phoneNum username' })
+              .lean();
+
+            const notified = new Set();
+            for (const group of groups) {
+              if (!Array.isArray(group.users)) continue;
+              for (const user of group.users) {
+                if (!user?.phoneNum || notified.has(user.phoneNum)) continue;
+                try {
+                  await sendFn(user.phoneNum, user.username, clientLabel);
+                  notified.add(user.phoneNum);
+                } catch (error) {
+                  console.error(
+                    `Error enviando WhatsApp de ${actionLabel}`,
+                    error.message
+                  );
+                }
               }
             }
           } catch (error) {
-            console.error('Error al notificar alarma de conexión', error.message);
+            console.error(
+              `Error al notificar ${actionLabel} del cliente`,
+              error.message
+            );
           }
-          alarm.active = true;
-          await alarm.save();
-        } else if (!triggered && alarm.active) {
-          alarm.active = false;
-          await alarm.save();
+        };
+
+        if (client.connectionStatus === true && !connected) {
+          await notifyUsers(sendClientOfflineWhatsApp, 'desconexión');
+        } else if (client.connectionStatus === false && connected) {
+          await notifyUsers(sendClientOnlineWhatsApp, 'reconexión');
         }
+
+        client.connectionStatus = connected;
+        await client.save();
       }
     }
     res.json(clients);
@@ -148,10 +139,6 @@ export const updateClientEnabled = async (req, res) => {
       if (pointIds.length > 0) {
         await Alarm.updateMany({ pointId: { $in: pointIds } }, { active: false });
       }
-      await Alarm.updateMany(
-        { clientId: client._id, monitorType: 'clientConnection' },
-        { active: false }
-      );
     }
     await client.save();
     res.json(client);

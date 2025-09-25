@@ -73,10 +73,7 @@ export const reportState = async (req, res) => {
         await DataLog.create({ pointId: point._id, presentValue, timestamp: now });
       }
 
-      const alarms = await Alarm.find({
-        pointId: point._id,
-        $or: [{ monitorType: { $exists: false } }, { monitorType: 'point' }],
-      });
+      const alarms = await Alarm.find({ pointId: point._id });
       for (const alarm of alarms) {
         let triggered = false;
         if (alarm.conditionType === 'true') triggered = Boolean(presentValue) === true;

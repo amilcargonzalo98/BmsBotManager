@@ -30,16 +30,6 @@ import { fetchPoints } from '../services/points';
 import { fetchGroups } from '../services/groups';
 import { fetchClients } from '../services/clients';
 
-const createEmptyAlarmState = () => ({
-  alarmName: '',
-  monitorType: 'point',
-  pointId: '',
-  clientId: '',
-  groupId: '',
-  conditionType: 'true',
-  threshold: '',
-});
-
 export default function AlarmsPage() {
   const [alarms, setAlarms] = useState([]);
   const [points, setPoints] = useState([]);
@@ -48,7 +38,7 @@ export default function AlarmsPage() {
   const [clients, setClients] = useState([]);
   const [filterGroup, setFilterGroup] = useState('');
   const [clientFilter, setClientFilter] = useState('');
-  const [newAlarm, setNewAlarm] = useState(() => createEmptyAlarmState());
+  const [newAlarm, setNewAlarm] = useState({ alarmName: '', pointId: '', groupId: '', conditionType: 'true', threshold: '' });
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
   const [editAlarm, setEditAlarm] = useState(null);
@@ -69,173 +59,16 @@ export default function AlarmsPage() {
     });
   }, [clientFilter]);
 
-  useEffect(() => {
-    setNewAlarm((prev) => ({ ...prev, clientId: clientFilter }));
-  }, [clientFilter]);
-
   const load = async () => {
     const { data } = await fetchAlarms();
     setAlarms(data);
   };
 
-  const buildPayloadFromState = (state) => {
-    const monitorType = state.monitorType ?? 'point';
-    const payload = {
-      alarmName: state.alarmName?.trim() ?? '',
-      groupId: state.groupId,
-      conditionType: state.conditionType,
-      monitorType,
-    };
-
-    if (!payload.alarmName) {
-      throw new Error('Ingrese un nombre para la alarma');
-    }
-    if (!payload.groupId) {
-      throw new Error('Seleccione un grupo');
-    }
-    if (!payload.conditionType) {
-      throw new Error('Seleccione una condición');
-    }
-
-    if (monitorType === 'clientConnection') {
-      const clientId = state.clientId || '';
-      if (!clientId) {
-        throw new Error('Seleccione un cliente para la alarma');
-      }
-      const thresholdValue = Number(state.threshold);
-      if (!Number.isFinite(thresholdValue) || thresholdValue < 0) {
-        throw new Error('Ingrese los segundos sin reporte');
-      }
-      return {
-        ...payload,
-        clientId,
-        threshold: thresholdValue,
-      };
-    }
-
-    const pointId = state.pointId || '';
-    if (!pointId) {
-      throw new Error('Seleccione un punto');
-    }
-
-    const numericCondition = payload.conditionType === 'gt' || payload.conditionType === 'lt';
-    const result = {
-      ...payload,
-      pointId,
-    };
-
-    if (numericCondition) {
-      const thresholdValue = Number(state.threshold);
-      if (!Number.isFinite(thresholdValue)) {
-        throw new Error('Ingrese un valor válido para el umbral');
-      }
-      result.threshold = thresholdValue;
-    } else {
-      result.threshold = null;
-    }
-
-    return result;
-  };
-
-  const handleNewAlarmTargetChange = (value) => {
-    setNewAlarm((prev) => {
-      if (value === 'clientConnection') {
-        return {
-          ...prev,
-          monitorType: 'clientConnection',
-          pointId: '',
-          clientId: clientFilter || prev.clientId || '',
-          conditionType: prev.conditionType === 'gt' || prev.conditionType === 'lt' ? prev.conditionType : 'gt',
-          threshold: prev.threshold || '60',
-        };
-      }
-      return {
-        ...prev,
-        monitorType: 'point',
-        pointId: value,
-        clientId: '',
-        conditionType: prev.conditionType || 'true',
-        threshold:
-          prev.conditionType === 'gt' || prev.conditionType === 'lt'
-            ? prev.threshold
-            : '',
-      };
-    });
-  };
-
-  const handleEditTargetChange = (value) => {
-    setEditAlarm((prev) => {
-      if (!prev) return prev;
-      if (value === 'clientConnection') {
-        return {
-          ...prev,
-          monitorType: 'clientConnection',
-          pointId: '',
-          clientId: prev.clientId || '',
-          conditionType: prev.conditionType === 'gt' || prev.conditionType === 'lt' ? prev.conditionType : 'gt',
-          threshold: prev.threshold || '60',
-        };
-      }
-      return {
-        ...prev,
-        monitorType: 'point',
-        pointId: value,
-        clientId: '',
-        conditionType: prev.conditionType || 'true',
-        threshold:
-          prev.conditionType === 'gt' || prev.conditionType === 'lt'
-            ? prev.threshold
-            : '',
-      };
-    });
-  };
-
-  const renderAlarmTarget = (alarm) => {
-    const monitorType = alarm.monitorType ?? 'point';
-    if (monitorType === 'clientConnection') {
-      let clientName = '';
-      if (alarm.clientId && typeof alarm.clientId === 'object') {
-        clientName = alarm.clientId.clientName || alarm.clientId.name || '';
-      } else if (typeof alarm.clientId === 'string') {
-        const client = clients.find((c) => c._id === alarm.clientId);
-        clientName = client?.clientName || '';
-      }
-      return `${clientName || 'Cliente'} — Client connection status`;
-    }
-    return alarm.pointId?.pointName || alarm.pointId || 'Sin asignar';
-  };
-
-  const renderConditionLabel = (alarm) => {
-    const monitorType = alarm.monitorType ?? 'point';
-    const suffix = monitorType === 'clientConnection' ? ' s' : '';
-    if (alarm.conditionType === 'gt') {
-      return `>= ${alarm.threshold ?? '-'}${suffix}`;
-    }
-    if (alarm.conditionType === 'lt') {
-      return `<= ${alarm.threshold ?? '-'}${suffix}`;
-    }
-    if (alarm.conditionType === 'true') {
-      return '== true';
-    }
-    if (alarm.conditionType === 'false') {
-      return '== false';
-    }
-    return 'Condición desconocida';
-  };
-
   const handleAdd = async () => {
-    let payload;
     try {
-      payload = buildPayloadFromState(newAlarm);
-    } catch (validationError) {
-      setError(validationError.message);
-      return;
-    }
-
-    try {
-      await createAlarm(payload);
+      await createAlarm(newAlarm);
       await load();
-      setNewAlarm(() => ({ ...createEmptyAlarmState(), clientId: clientFilter }));
+      setNewAlarm({ alarmName: '', pointId: '', groupId: '', conditionType: 'true', threshold: '' });
       setError('');
     } catch {
       setError('Error al crear alarma');
@@ -255,28 +88,16 @@ export default function AlarmsPage() {
 
   const handleEditOpen = (alarm) => {
     setEditError('');
-    const monitorType = alarm.monitorType || 'point';
-    const isConnection = monitorType === 'clientConnection';
     setEditAlarm({
       _id: alarm._id,
       alarmName: alarm.alarmName || '',
-      monitorType,
-      pointId: isConnection ? '' : alarm.pointId?._id || alarm.pointId || '',
-      clientId: isConnection
-        ? alarm.clientId?._id || alarm.clientId || ''
-        : '',
+      pointId: alarm.pointId?._id || alarm.pointId || '',
       groupId: alarm.groupId?._id || alarm.groupId || '',
-      conditionType: isConnection
-        ? (alarm.conditionType === 'gt' || alarm.conditionType === 'lt'
-            ? alarm.conditionType
-            : 'gt')
-        : alarm.conditionType || 'true',
+      conditionType: alarm.conditionType || 'true',
       threshold:
-        isConnection
+        alarm.conditionType === 'gt' || alarm.conditionType === 'lt'
           ? alarm.threshold ?? ''
-          : (alarm.conditionType === 'gt' || alarm.conditionType === 'lt'
-              ? alarm.threshold ?? ''
-              : ''),
+          : '',
     });
   };
 
@@ -302,16 +123,17 @@ export default function AlarmsPage() {
 
   const handleUpdate = async () => {
     if (!editAlarm) return;
-    let payload;
     try {
-      payload = buildPayloadFromState(editAlarm);
-    } catch (validationError) {
-      setEditError(validationError.message);
-      return;
-    }
-
-    try {
-      await updateAlarm(editAlarm._id, payload);
+      await updateAlarm(editAlarm._id, {
+        alarmName: editAlarm.alarmName,
+        pointId: editAlarm.pointId,
+        groupId: editAlarm.groupId,
+        conditionType: editAlarm.conditionType,
+        threshold:
+          editAlarm.conditionType === 'gt' || editAlarm.conditionType === 'lt'
+            ? editAlarm.threshold
+            : null,
+      });
       await load();
       handleEditClose();
     } catch {
@@ -355,8 +177,13 @@ export default function AlarmsPage() {
               .map(a => (
               <TableRow key={a._id}>
                 <TableCell>{a.alarmName}</TableCell>
-                <TableCell>{renderAlarmTarget(a)}</TableCell>
-                <TableCell>{renderConditionLabel(a)}</TableCell>
+                <TableCell>{a.pointId?.pointName || a.pointId}</TableCell>
+                <TableCell>
+                  {a.conditionType === 'gt' && `> ${a.threshold}`}
+                  {a.conditionType === 'lt' && `< ${a.threshold}`}
+                  {a.conditionType === 'true' && '== true'}
+                  {a.conditionType === 'false' && '== false'}
+                </TableCell>
                 <TableCell>{a.groupId?.groupName || a.groupId}</TableCell>
                 <TableCell>
                   <IconButton
@@ -402,16 +229,13 @@ export default function AlarmsPage() {
             <InputLabel id="point-label">Punto</InputLabel>
             <Select
               labelId="point-label"
-              value={newAlarm.monitorType === 'clientConnection' ? 'clientConnection' : newAlarm.pointId}
+              value={newAlarm.pointId}
               label="Punto"
-              onChange={e=>handleNewAlarmTargetChange(e.target.value)}
+              onChange={e=>setNewAlarm(n=>({ ...n, pointId:e.target.value }))}
             >
               {points.map(p => (
                 <MenuItem key={p._id} value={p._id}>{p.pointName}</MenuItem>
               ))}
-              {clientFilter && (
-                <MenuItem value="clientConnection">Client connection status</MenuItem>
-              )}
             </Select>
           </FormControl>
           <FormControl sx={{ minWidth:120 }}>
@@ -422,26 +246,16 @@ export default function AlarmsPage() {
               label="Condición"
               onChange={e=>setNewAlarm(n=>({ ...n, conditionType:e.target.value }))}
             >
-              {newAlarm.monitorType === 'clientConnection' ? (
-                <>
-                  <MenuItem value="gt">&gt;=</MenuItem>
-                  <MenuItem value="lt">&lt;=</MenuItem>
-                </>
-              ) : (
-                <>
-                  <MenuItem value="true">== true</MenuItem>
-                  <MenuItem value="false">== false</MenuItem>
-                  <MenuItem value="gt">&gt;=</MenuItem>
-                  <MenuItem value="lt">&lt;=</MenuItem>
-                </>
-              )}
+              <MenuItem value="true">== true</MenuItem>
+              <MenuItem value="false">== false</MenuItem>
+              <MenuItem value="gt">&gt;=</MenuItem>
+              <MenuItem value="lt">&lt;=</MenuItem>
             </Select>
           </FormControl>
           {(newAlarm.conditionType === 'gt' || newAlarm.conditionType === 'lt') && (
             <TextField
-              label={newAlarm.monitorType === 'clientConnection' ? 'Segundos sin reporte' : 'Valor'}
+              label="Valor"
               type="number"
-              inputProps={newAlarm.monitorType === 'clientConnection' ? { min: 0 } : undefined}
               value={newAlarm.threshold}
               onChange={e=>setNewAlarm(n=>({ ...n, threshold:e.target.value }))}
             />
@@ -481,30 +295,14 @@ export default function AlarmsPage() {
             <Select
               labelId="edit-point-label"
               label="Punto"
-              value={editAlarm?.monitorType === 'clientConnection' ? 'clientConnection' : editAlarm?.pointId || ''}
-              onChange={(e) => handleEditTargetChange(e.target.value)}
+              value={editAlarm?.pointId || ''}
+              onChange={(e) => handleEditChange('pointId', e.target.value)}
             >
               {allPoints.map((p) => (
                 <MenuItem key={p._id} value={p._id}>{p.pointName}</MenuItem>
               ))}
-              <MenuItem value="clientConnection">Client connection status</MenuItem>
             </Select>
           </FormControl>
-          {editAlarm?.monitorType === 'clientConnection' && (
-            <FormControl fullWidth>
-              <InputLabel id="edit-client-label">Cliente</InputLabel>
-              <Select
-                labelId="edit-client-label"
-                label="Cliente"
-                value={editAlarm?.clientId || ''}
-                onChange={(e) => handleEditChange('clientId', e.target.value)}
-              >
-                {clients.map((c) => (
-                  <MenuItem key={c._id} value={c._id}>{c.clientName}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
           <FormControl fullWidth>
             <InputLabel id="edit-group-label">Grupo</InputLabel>
             <Select
@@ -526,26 +324,16 @@ export default function AlarmsPage() {
               value={editAlarm?.conditionType || 'true'}
               onChange={(e) => handleEditChange('conditionType', e.target.value)}
             >
-              {editAlarm?.monitorType === 'clientConnection' ? (
-                <>
-                  <MenuItem value="gt">&gt;=</MenuItem>
-                  <MenuItem value="lt">&lt;=</MenuItem>
-                </>
-              ) : (
-                <>
-                  <MenuItem value="true">== true</MenuItem>
-                  <MenuItem value="false">== false</MenuItem>
-                  <MenuItem value="gt">&gt;=</MenuItem>
-                  <MenuItem value="lt">&lt;=</MenuItem>
-                </>
-              )}
+              <MenuItem value="true">== true</MenuItem>
+              <MenuItem value="false">== false</MenuItem>
+              <MenuItem value="gt">&gt;=</MenuItem>
+              <MenuItem value="lt">&lt;=</MenuItem>
             </Select>
           </FormControl>
           {(editAlarm?.conditionType === 'gt' || editAlarm?.conditionType === 'lt') && (
             <TextField
-              label={editAlarm?.monitorType === 'clientConnection' ? 'Segundos sin reporte' : 'Valor'}
+              label="Valor"
               type="number"
-              inputProps={editAlarm?.monitorType === 'clientConnection' ? { min: 0 } : undefined}
               value={editAlarm?.threshold ?? ''}
               onChange={(e) => handleEditChange('threshold', e.target.value)}
             />
