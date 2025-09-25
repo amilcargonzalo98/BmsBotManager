@@ -6,7 +6,6 @@ const clientSchema = new mongoose.Schema({
   enabled: { type: Boolean, default: false },
   ipAddress: String,
   location: String,
-  groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' },
   connectionStatus: { type: Boolean, default: false },
   lastReport: Date
 });

@@ -5,7 +5,7 @@ import {
   Container, Typography, TextField, Button, Box,
   Paper, Table, TableHead, TableRow, TableCell, TableBody,
   IconButton, Dialog, DialogTitle, DialogContent, DialogContentText,
-  DialogActions, FormControl, InputLabel, Select, MenuItem, Alert
+  DialogActions, Alert
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -17,7 +17,7 @@ import Autorenew from '@mui/icons-material/Autorenew';
 export default function ClientPage() {
   const [clients, setClients] = useState([]);
   const [groups, setGroups] = useState([]);
-  const [newClient, setNewClient] = useState({ clientName: '', location: '', groupId: '' });
+  const [newClient, setNewClient] = useState({ clientName: '', location: '' });
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
   const [showKeys, setShowKeys] = useState({});
@@ -39,7 +39,7 @@ export default function ClientPage() {
     try {
       await createClient(newClient);
       await refreshClients();
-      setNewClient({ clientName: '', location: '', groupId: '' });
+      setNewClient({ clientName: '', location: '' });
       setError('');
     } catch {
       setError('Error al crear cliente');
@@ -74,7 +74,6 @@ export default function ClientPage() {
       _id: client._id,
       clientName: client.clientName || '',
       location: client.location || '',
-      groupId: client.groupId?._id || client.groupId || '',
       ipAddress: client.ipAddress || '',
     });
   };
@@ -93,7 +92,6 @@ export default function ClientPage() {
       await updateClient(editClient._id, {
         clientName: editClient.clientName,
         location: editClient.location,
-        groupId: editClient.groupId,
         ipAddress: editClient.ipAddress,
       });
       await refreshClients();
@@ -114,7 +112,7 @@ export default function ClientPage() {
               <TableCell>Enabled</TableCell>
               <TableCell>IP</TableCell>
               <TableCell>Ubicación</TableCell>
-              <TableCell>Grupo</TableCell>
+              <TableCell>Grupos asociados</TableCell>
               <TableCell>Conectado</TableCell>
               <TableCell>Acciones</TableCell>
               <TableCell>ApiKey</TableCell>
@@ -132,7 +130,24 @@ export default function ClientPage() {
                 </TableCell>
                 <TableCell>{c.ipAddress}</TableCell>
                 <TableCell>{c.location}</TableCell>
-                <TableCell>{groups.find(g => g._id === c.groupId)?.groupName || c.groupId}</TableCell>
+                <TableCell>
+                  {(() => {
+                    const relatedGroups = groups
+                      .filter((g) =>
+                        Array.isArray(g.points) &&
+                        g.points.some((p) => {
+                          const clientRef = p?.clientId;
+                          if (!clientRef) return false;
+                          if (typeof clientRef === 'string') {
+                            return clientRef === c._id;
+                          }
+                          return (clientRef._id || clientRef.id)?.toString() === c._id;
+                        })
+                      )
+                      .map((g) => g.groupName);
+                    return relatedGroups.length > 0 ? relatedGroups.join(', ') : 'Sin grupo';
+                  })()}
+                </TableCell>
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <FiberManualRecord sx={{ color: c.connectionStatus ? 'green' : 'red' }} />
@@ -176,19 +191,6 @@ export default function ClientPage() {
             value={newClient.location}
             onChange={e => setNewClient(n => ({ ...n, location: e.target.value }))}
           />
-          <FormControl sx={{ minWidth: 120 }}>
-            <InputLabel id="group-label">Grupo</InputLabel>
-            <Select
-              labelId="group-label"
-              value={newClient.groupId}
-              label="Grupo"
-              onChange={e => setNewClient(n => ({ ...n, groupId: e.target.value }))}
-            >
-              {groups.map(g => (
-                <MenuItem key={g._id} value={g._id}>{g.groupName}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
           <Button variant="contained" onClick={handleAdd}>Agregar</Button>
         </Box>
       </Box>
@@ -216,19 +218,6 @@ export default function ClientPage() {
             value={editClient?.location || ''}
             onChange={(e) => handleEditChange('location', e.target.value)}
           />
-          <FormControl fullWidth>
-            <InputLabel id="edit-client-group-label">Grupo</InputLabel>
-            <Select
-              labelId="edit-client-group-label"
-              label="Grupo"
-              value={editClient?.groupId || ''}
-              onChange={(e) => handleEditChange('groupId', e.target.value)}
-            >
-              {groups.map((g) => (
-                <MenuItem key={g._id} value={g._id}>{g.groupName}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleEditClose}>Cancelar</Button>
