@@ -31,10 +31,13 @@ async function applyChanges() {
       await Group.findByIdAndUpdate(groupId, { $addToSet: { points: { $each: pointIds } } });
     }
 
-    // Update users without groupId
-    const updated = await User.updateMany({ groupId: { $exists: false } }, { groupId: groupId });
+    // Update users without groups assigned
+    const updated = await User.updateMany(
+      { $or: [{ groups: { $exists: false } }, { groups: { $size: 0 } }] },
+      { $addToSet: { groups: groupId } }
+    );
     console.log('Usuarios actualizados:', updated.modifiedCount);
-    const usersWithGroup = await User.find({ groupId: groupId }).select('_id');
+    const usersWithGroup = await User.find({ groups: groupId }).select('_id');
     if (usersWithGroup.length > 0) {
       await Group.findByIdAndUpdate(groupId, { $addToSet: { users: { $each: usersWithGroup.map((u) => u._id) } } });
     }

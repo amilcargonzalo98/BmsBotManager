@@ -93,7 +93,7 @@ export const reportState = async (req, res) => {
             } catch (e) {
               console.error('Error registrando evento', e.message);
             }
-            const users = await User.find({ groupId: alarm.groupId });
+            const users = await User.find({ groups: alarm.groupId });
             for (const u of users) {
               if (u.phoneNum) {
                 try {

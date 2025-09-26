@@ -55,14 +55,12 @@ export const createGroup = async (req, res) => {
     const promises = [];
 
     if (userIds.length > 0) {
-      const userObjectIds = userIds.map((id) => id);
       promises.push(
-        Group.updateMany(
-          { _id: { $ne: group._id }, users: { $in: userObjectIds } },
-          { $pull: { users: { $in: userObjectIds } } }
+        User.updateMany(
+          { _id: { $in: userIds } },
+          { $addToSet: { groups: group._id } }
         )
       );
-      promises.push(User.updateMany({ _id: { $in: userObjectIds } }, { groupId: group._id }));
     }
 
     if (pointIds.length > 0) {
@@ -117,24 +115,17 @@ export const updateGroup = async (req, res) => {
       if (removedUsers.length > 0) {
         operations.push(
           User.updateMany(
-            { _id: { $in: removedUsers }, groupId: group._id },
-            { $unset: { groupId: '' } }
+            { _id: { $in: removedUsers } },
+            { $pull: { groups: group._id } }
           )
         );
       }
 
       if (addedUsers.length > 0) {
-        const addedObjectIds = addedUsers.map((id) => new mongoose.Types.ObjectId(id));
-        operations.push(
-          Group.updateMany(
-            { _id: { $ne: group._id }, users: { $in: addedObjectIds } },
-            { $pull: { users: { $in: addedObjectIds } } }
-          )
-        );
         operations.push(
           User.updateMany(
             { _id: { $in: addedUsers } },
-            { groupId: group._id }
+            { $addToSet: { groups: group._id } }
           )
         );
       }
@@ -190,7 +181,7 @@ export const deleteGroup = async (req, res) => {
     if (group) {
       const ids = group._id;
       await Promise.all([
-        User.updateMany({ groupId: ids }, { $unset: { groupId: '' } }),
+        User.updateMany({ groups: ids }, { $pull: { groups: ids } }),
         Point.updateMany({ groupId: ids }, { $unset: { groupId: '' } }),
       ]);
     }
