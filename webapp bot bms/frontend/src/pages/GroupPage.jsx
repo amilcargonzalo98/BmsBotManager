@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { fetchGroups, createGroup, deleteGroup, updateGroup } from '../services/groups';
 import { fetchUsers } from '../services/users';
 import { fetchPoints } from '../services/points';
+import { truncateText } from '../utils/text';
 import {
   Container, Typography, TextField, Button, Box,
   Paper, Table, TableHead, TableRow, TableCell, TableBody,
@@ -162,7 +163,7 @@ export default function GroupPage() {
       }
       return user?.name || user?.username || userNameById.get(user?._id) || user?._id || 'Desconocido';
     });
-    return names.join(', ');
+    return truncateText(names.join(', '));
   };
 
   const renderGroupPoints = (group) => {
@@ -181,7 +182,7 @@ export default function GroupPage() {
       }
       return pointLabelById.get(point?._id) || labelBase || 'Desconocido';
     });
-    return labels.join(', ');
+    return truncateText(labels.join(', '));
   };
 
   return (
@@ -201,8 +202,8 @@ export default function GroupPage() {
           <TableBody>
             {groups.map((g) => (
               <TableRow key={g._id}>
-                <TableCell>{g.groupName}</TableCell>
-                <TableCell>{g.description}</TableCell>
+                <TableCell>{truncateText(g.groupName)}</TableCell>
+                <TableCell>{truncateText(g.description)}</TableCell>
                 <TableCell>{renderGroupUsers(g)}</TableCell>
                 <TableCell>{renderGroupPoints(g)}</TableCell>
                 <TableCell>

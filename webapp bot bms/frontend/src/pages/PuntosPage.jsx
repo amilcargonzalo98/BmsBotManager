@@ -26,6 +26,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import { fetchPoints, updatePointGroup } from '../services/points';
 import { fetchClients } from '../services/clients';
 import { fetchGroups } from '../services/groups';
+import { truncateText } from '../utils/text';
 
 export default function PuntosPage() {
   const [points, setPoints] = useState([]);
@@ -162,31 +163,36 @@ export default function PuntosPage() {
           <TableBody>
             {points.map((p) => (
               <TableRow key={p._id}>
-                <TableCell>{p.pointName}</TableCell>
-                <TableCell>{p.ipAddress}</TableCell>
+                <TableCell>{truncateText(p.pointName)}</TableCell>
+                <TableCell>{truncateText(p.ipAddress)}</TableCell>
                 <TableCell>
-                  {p.pointType}
-                  {typeAcronyms[p.pointType] ? ` (${typeAcronyms[p.pointType]})` : ''}
+                  {truncateText(
+                    `${p.pointType}${
+                      typeAcronyms[p.pointType] ? ` (${typeAcronyms[p.pointType]})` : ''
+                    }`
+                  )}
                 </TableCell>
-                <TableCell>{p.pointId}</TableCell>
-                <TableCell>{p.clientId?.clientName || p.clientId}</TableCell>
+                <TableCell>{truncateText(p.pointId)}</TableCell>
+                <TableCell>{truncateText(p.clientId?.clientName || p.clientId)}</TableCell>
                 <TableCell>
                   {(() => {
                     const directGroup = p.groupId;
                     if (directGroup) {
                       if (typeof directGroup === 'object') {
                         return (
-                          directGroup.groupName ||
-                          groups.find((g) => g._id === directGroup._id)?.groupName ||
-                          directGroup._id ||
-                          'Sin grupo'
+                          truncateText(
+                            directGroup.groupName ||
+                              groups.find((g) => g._id === directGroup._id)?.groupName ||
+                              directGroup._id ||
+                              'Sin grupo'
+                          )
                         );
                       }
                       const fromList = groups.find((g) => g._id === directGroup);
                       if (fromList) {
-                        return fromList.groupName;
+                        return truncateText(fromList.groupName);
                       }
-                      return directGroup;
+                      return truncateText(directGroup);
                     }
                     const fromGroups = groups.find((g) =>
                       Array.isArray(g.points) &&
@@ -195,15 +201,17 @@ export default function PuntosPage() {
                         return pointId === p._id;
                       })
                     );
-                    return fromGroups?.groupName || 'Sin grupo';
+                    return truncateText(fromGroups?.groupName || 'Sin grupo');
                   })()}
                 </TableCell>
                 <TableCell>
-                  {p.lastValue
-                    ? `${p.lastValue.presentValue} (${new Date(
-                        p.lastValue.timestamp
-                      ).toLocaleString()})`
-                    : 'N/A'}
+                  {truncateText(
+                    p.lastValue
+                      ? `${p.lastValue.presentValue} (${new Date(
+                          p.lastValue.timestamp
+                        ).toLocaleString()})`
+                      : 'N/A'
+                  )}
                 </TableCell>
                 <TableCell align="center">
                   <Tooltip title="Editar grupo">

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchClients, createClient, deleteClient, updateClientEnabled, updateClient } from '../services/clients';
 import { fetchGroups } from '../services/groups';
+import { truncateText } from '../utils/text';
 import {
   Container, Typography, TextField, Button, Box,
   Paper, Table, TableHead, TableRow, TableCell, TableBody,
@@ -121,15 +122,15 @@ export default function ClientPage() {
           <TableBody>
             {clients.map(c => (
               <TableRow key={c._id}>
-                <TableCell>{c.clientName}</TableCell>
+                <TableCell>{truncateText(c.clientName)}</TableCell>
                 <TableCell>
                   <FiberManualRecord sx={{ color: c.enabled ? 'green' : 'red' }} />
                   <IconButton size="small" onClick={() => setToggleInfo({ id: c._id, enabled: !c.enabled })}>
                     <Autorenew fontSize="small" />
                   </IconButton>
                 </TableCell>
-                <TableCell>{c.ipAddress}</TableCell>
-                <TableCell>{c.location}</TableCell>
+                <TableCell>{truncateText(c.ipAddress)}</TableCell>
+                <TableCell>{truncateText(c.location)}</TableCell>
                 <TableCell>
                   {(() => {
                     const relatedGroups = groups
@@ -145,13 +146,14 @@ export default function ClientPage() {
                         })
                       )
                       .map((g) => g.groupName);
-                    return relatedGroups.length > 0 ? relatedGroups.join(', ') : 'Sin grupo';
+                    const relatedGroupsText = relatedGroups.length > 0 ? relatedGroups.join(', ') : 'Sin grupo';
+                    return truncateText(relatedGroupsText);
                   })()}
                 </TableCell>
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <FiberManualRecord sx={{ color: c.connectionStatus ? 'green' : 'red' }} />
-                    {c.lastReport ? new Date(c.lastReport).toLocaleString() : 'Sin conexión'}
+                    <span>{truncateText(c.lastReport ? new Date(c.lastReport).toLocaleString() : 'Sin conexión')}</span>
                   </Box>
                 </TableCell>
                 <TableCell>
