@@ -1,5 +1,63 @@
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Group from '../models/Group.js';
+
+const normalizeGroupIds = (value) => {
+  if (Array.isArray(value)) {
+    const seen = new Set();
+    const result = [];
+    value.forEach((item) => {
+      if (!item) return;
+      const candidate =
+        typeof item === 'object' && item !== null && item._id ? item._id : item;
+      try {
+        const objectId = new mongoose.Types.ObjectId(candidate);
+        const key = objectId.toString();
+        if (!seen.has(key)) {
+          seen.add(key);
+          result.push(objectId);
+        }
+      } catch (err) {
+        // Ignore invalid ids
+      }
+    });
+    return result;
+  }
+  if (value) {
+    const candidate =
+      typeof value === 'object' && value !== null && value._id ? value._id : value;
+    try {
+      return [new mongoose.Types.ObjectId(candidate)];
+    } catch (err) {
+      return [];
+    }
+  }
+  return [];
+};
+
+const formatUser = (user) => {
+  if (!user) return user;
+  const data = user.toObject ? user.toObject() : { ...user };
+  const existingGroups = Array.isArray(data.groups) ? data.groups : [];
+  if (existingGroups.length === 0 && data.groupId) {
+    data.groups = [data.groupId];
+  } else {
+    data.groups = existingGroups;
+  }
+  const [firstGroup] = data.groups;
+  if (firstGroup && typeof firstGroup === 'object' && firstGroup !== null && firstGroup._id) {
+    data.groupId = firstGroup._id.toString();
+  } else if (firstGroup) {
+    try {
+      data.groupId = firstGroup.toString();
+    } catch (err) {
+      data.groupId = firstGroup;
+    }
+  } else {
+    data.groupId = null;
+  }
+  return data;
+};
 
 export const login = async (req, res) => {
   const { username, password } = req.body;
@@ -12,9 +70,9 @@ export const login = async (req, res) => {
   }
 };
 
-export const getUsers = async (req, res) => {
+export const getUsers = async (_req, res) => {
   const users = await User.find();
-  res.json(users);
+  res.json(users.map((user) => formatUser(user)));
 };
 
 export const createUser = async (req, res) => {
@@ -24,17 +82,23 @@ export const createUser = async (req, res) => {
     if (existing) {
       return res.status(400).json({ message: 'Usuario o teléfono ya existe' });
     }
-    const newUser = await User.create(req.body);
-    if (newUser.groupId) {
-      await Promise.all([
-        Group.findByIdAndUpdate(newUser.groupId, { $addToSet: { users: newUser._id } }),
-        Group.updateMany(
-          { _id: { $ne: newUser.groupId }, users: newUser._id },
-          { $pull: { users: newUser._id } }
-        ),
-      ]);
+    const payload = { ...req.body };
+    if (typeof payload.groups === 'undefined' && typeof payload.groupId !== 'undefined') {
+      payload.groups = payload.groupId;
     }
-    res.status(201).json(newUser);
+    if (typeof payload.groups !== 'undefined') {
+      payload.groups = normalizeGroupIds(payload.groups);
+    }
+    delete payload.groupId;
+
+    const newUser = await User.create(payload);
+    if (Array.isArray(newUser.groups) && newUser.groups.length > 0) {
+      await Group.updateMany(
+        { _id: { $in: newUser.groups } },
+        { $addToSet: { users: newUser._id } }
+      );
+    }
+    res.status(201).json(formatUser(newUser));
   } catch (err) {
     res.status(500).json({ message: 'Error al crear usuario' });
   }
@@ -67,36 +131,60 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
-    const previousGroup = user.groupId ? user.groupId.toString() : null;
+    let previousGroups = (user.groups || []).map((group) => group.toString());
+    const legacyGroupId = user.get ? user.get('groupId') : user.groupId;
+    if (previousGroups.length === 0 && legacyGroupId) {
+      try {
+        previousGroups = [legacyGroupId.toString()];
+      } catch (err) {
+        previousGroups = [legacyGroupId];
+      }
+    }
 
-    Object.entries(req.body).forEach(([key, value]) => {
-      if (typeof value !== 'undefined') {
+    const payload = { ...req.body };
+    if (typeof payload.groups === 'undefined' && typeof payload.groupId !== 'undefined') {
+      payload.groups = payload.groupId;
+    }
+    delete payload.groupId;
+
+    let normalizedGroups = null;
+    Object.entries(payload).forEach(([key, value]) => {
+      if (key === 'groups') {
+        normalizedGroups = normalizeGroupIds(value);
+        user.groups = normalizedGroups;
+        if (user.set) {
+          user.set('groupId', undefined, { strict: false });
+        }
+      } else if (typeof value !== 'undefined') {
         user[key] = value;
       }
     });
 
     const updatedUser = await user.save();
 
-    const currentGroup = updatedUser.groupId
-      ? updatedUser.groupId.toString()
-      : null;
+    const currentGroups = Array.isArray(normalizedGroups)
+      ? normalizedGroups.map((group) => group.toString())
+      : (updatedUser.groups || []).map((group) => group.toString());
 
     const operations = [];
 
-    if (previousGroup && previousGroup !== currentGroup) {
+    const removedGroups = previousGroups.filter((id) => !currentGroups.includes(id));
+    const addedGroups = currentGroups.filter((id) => !previousGroups.includes(id));
+
+    if (removedGroups.length > 0) {
       operations.push(
-        Group.findByIdAndUpdate(previousGroup, { $pull: { users: updatedUser._id } })
+        Group.updateMany(
+          { _id: { $in: removedGroups } },
+          { $pull: { users: updatedUser._id } }
+        )
       );
     }
 
-    if (currentGroup) {
-      operations.push(
-        Group.findByIdAndUpdate(currentGroup, { $addToSet: { users: updatedUser._id } })
-      );
+    if (addedGroups.length > 0) {
       operations.push(
         Group.updateMany(
-          { _id: { $ne: currentGroup }, users: updatedUser._id },
-          { $pull: { users: updatedUser._id } }
+          { _id: { $in: addedGroups } },
+          { $addToSet: { users: updatedUser._id } }
         )
       );
     }
@@ -105,7 +193,7 @@ export const updateUser = async (req, res) => {
       await Promise.all(operations);
     }
 
-    res.json(updatedUser);
+    res.json(formatUser(updatedUser));
   } catch (err) {
     res.status(500).json({ message: 'Error al actualizar usuario' });
   }
@@ -114,8 +202,11 @@ export const updateUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
-    if (user?.groupId) {
-      await Group.findByIdAndUpdate(user.groupId, { $pull: { users: user._id } });
+    if (user?.groups?.length) {
+      await Group.updateMany(
+        { _id: { $in: user.groups } },
+        { $pull: { users: user._id } }
+      );
     }
     res.status(204).end();
   } catch (err) {
