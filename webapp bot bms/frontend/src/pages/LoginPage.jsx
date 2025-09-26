@@ -32,7 +32,11 @@ export default function LoginPage() {
           <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
             FusionBMS
           </Typography>
-          <Typography variant="subtitle1" component="p" sx={{ color: 'text.secondary' }}>
+          <Typography
+            variant="h6"
+            component="p"
+            sx={{ color: '#000', fontWeight: 500, fontSize: '1.2rem' }}
+          >
             Notification Manager
           </Typography>
         </Box>
