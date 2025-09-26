@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Group from '../models/Group.js';
+
+const MAX_LOGIN_ATTEMPTS = 5;
+const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 
 const normalizeGroupIds = (value) => {
   if (Array.isArray(value)) {
@@ -38,6 +43,9 @@ const normalizeGroupIds = (value) => {
 const formatUser = (user) => {
   if (!user) return user;
   const data = user.toObject ? user.toObject() : { ...user };
+  if (data.password) {
+    delete data.password;
+  }
   const existingGroups = Array.isArray(data.groups) ? data.groups : [];
   if (existingGroups.length === 0 && data.groupId) {
     data.groups = [data.groupId];
@@ -61,10 +69,67 @@ const formatUser = (user) => {
 
 export const login = async (req, res) => {
   const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Usuario y contraseña son requeridos' });
+  }
   try {
-    const user = await User.findOne({ username, password });
-    if (!user) return res.status(401).json({ message: 'Credenciales inválidas' });
-    res.json({ user: { _id: user._id, name: user.name, phoneNum: user.phoneNum, userType: user.userType } });
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(401).json({ message: 'Credenciales inválidas' });
+    }
+
+    if (user.isLocked) {
+      return res
+        .status(423)
+        .json({ message: 'Cuenta bloqueada por múltiples intentos fallidos. Contacte al administrador.' });
+    }
+
+    const storedPassword = user.password || '';
+    const isHashed = typeof storedPassword === 'string' && storedPassword.startsWith('$2');
+    const passwordMatch = isHashed
+      ? await bcrypt.compare(password, storedPassword)
+      : storedPassword === password;
+
+    if (!passwordMatch) {
+      const attempts = (user.loginAttempts || 0) + 1;
+      user.loginAttempts = attempts;
+      if (attempts >= MAX_LOGIN_ATTEMPTS) {
+        user.isLocked = true;
+      }
+      await user.save();
+
+      const remaining = Math.max(MAX_LOGIN_ATTEMPTS - attempts, 0);
+      const message = user.isLocked
+        ? 'Cuenta bloqueada por múltiples intentos fallidos. Contacte al administrador.'
+        : `Credenciales inválidas. Intentos restantes: ${remaining}`;
+      return res.status(user.isLocked ? 423 : 401).json({ message });
+    }
+
+    user.loginAttempts = 0;
+    user.isLocked = false;
+    if (!isHashed) {
+      user.password = await bcrypt.hash(password, 10);
+    }
+    await user.save();
+
+    const token = jwt.sign(
+      { sub: user._id.toString(), username: user.username, userType: user.userType },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.json({
+      token,
+      user: {
+        _id: user._id,
+        username: user.username,
+        name: user.name,
+        phoneNum: user.phoneNum,
+        userType: user.userType,
+        loginAttempts: user.loginAttempts,
+        isLocked: user.isLocked
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: 'Error al consultar usuario' });
   }
@@ -77,12 +142,16 @@ export const getUsers = async (_req, res) => {
 
 export const createUser = async (req, res) => {
   try {
-    const { username, phoneNum } = req.body;
+    const { username, phoneNum, password } = req.body;
     const existing = await User.findOne({ $or: [{ username }, { phoneNum }] });
     if (existing) {
       return res.status(400).json({ message: 'Usuario o teléfono ya existe' });
     }
-    const payload = { ...req.body };
+    if (!password) {
+      return res.status(400).json({ message: 'La contraseña es obligatoria' });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const payload = { ...req.body, password: hashedPassword, loginAttempts: 0, isLocked: false };
     if (typeof payload.groups === 'undefined' && typeof payload.groupId !== 'undefined') {
       payload.groups = payload.groupId;
     }
@@ -146,6 +215,14 @@ export const updateUser = async (req, res) => {
       payload.groups = payload.groupId;
     }
     delete payload.groupId;
+
+    if (Object.prototype.hasOwnProperty.call(payload, 'password')) {
+      if (!payload.password) {
+        delete payload.password;
+      } else {
+        payload.password = await bcrypt.hash(payload.password, 10);
+      }
+    }
 
     let normalizedGroups = null;
     Object.entries(payload).forEach(([key, value]) => {

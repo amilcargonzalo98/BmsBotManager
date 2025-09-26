@@ -1,12 +1,14 @@
 import mongoose from '../config/database.js';
 
 const userSchema = new mongoose.Schema({
-  username: String,
-  password: String,
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
   name: String,
   phoneNum: String,
   userType: String,
-  groups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }]
+  groups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }],
+  loginAttempts: { type: Number, default: 0 },
+  isLocked: { type: Boolean, default: false }
 });
 
 const appendLegacyGroupId = (_doc, ret) => {
