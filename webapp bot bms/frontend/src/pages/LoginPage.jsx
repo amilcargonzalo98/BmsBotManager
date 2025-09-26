@@ -32,6 +32,9 @@ export default function LoginPage() {
           <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
             FusionBMS
           </Typography>
+          <Typography variant="subtitle1" component="p" sx={{ color: 'text.secondary' }}>
+            Notification Manager
+          </Typography>
         </Box>
         <Typography variant="h5" gutterBottom>Iniciar sesión</Typography>
         {error && <Alert severity="error" sx={{ width: '100%', mb: 2 }}>{error}</Alert>}
