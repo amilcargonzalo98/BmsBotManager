@@ -6,9 +6,8 @@ const clientSchema = new mongoose.Schema({
   enabled: { type: Boolean, default: false },
   ipAddress: String,
   location: String,
-  groups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }],
   connectionStatus: { type: Boolean, default: false },
-  lastReport: Date,
+  lastReport: Date
 });
 
 export default mongoose.model('Client', clientSchema);
