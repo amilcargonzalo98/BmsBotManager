@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Client from '../models/Client.js';
 import crypto from 'crypto';
 import Point from '../models/Point.js';
@@ -12,9 +13,33 @@ function generateApiKey() {
   return crypto.randomBytes(32).toString('hex');
 }
 
+const normalizeGroupIds = (values) => {
+  const list = Array.isArray(values)
+    ? values
+    : typeof values === 'undefined' || values === null
+      ? []
+      : [values];
+  const seen = new Set();
+  const result = [];
+  list.forEach((value) => {
+    if (!value) return;
+    try {
+      const objectId = new mongoose.Types.ObjectId(value);
+      const key = objectId.toString();
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(objectId);
+      }
+    } catch (err) {
+      // Ignore invalid ids
+    }
+  });
+  return result;
+};
+
 export const getClients = async (req, res) => {
   try {
-    const clients = await Client.find();
+    const clients = await Client.find().populate({ path: 'groups', select: 'groupName' });
     const now = Date.now();
     for (const client of clients) {
       const connected = Boolean(
@@ -77,12 +102,25 @@ export const getClients = async (req, res) => {
 
 export const createClient = async (req, res) => {
   try {
+    const payload = req.body || {};
+    const groups = normalizeGroupIds(payload.groups ?? payload.groupId);
     const data = {
-      ...req.body,
+      clientName: payload.clientName,
+      location: payload.location,
+      ipAddress: payload.ipAddress || '',
+      enabled: payload.enabled,
+      connectionStatus: payload.connectionStatus,
+      lastReport: payload.lastReport,
+      groups,
       apiKey: generateApiKey(),
-      ipAddress: '',
     };
+    Object.keys(data).forEach((key) => {
+      if (typeof data[key] === 'undefined') {
+        delete data[key];
+      }
+    });
     const newClient = await Client.create(data);
+    await newClient.populate({ path: 'groups', select: 'groupName' });
     res.status(201).json(newClient);
   } catch (err) {
     res.status(500).json({ message: 'Error al crear cliente' });
@@ -91,18 +129,35 @@ export const createClient = async (req, res) => {
 
 export const updateClient = async (req, res) => {
   try {
-    const allowedFields = ['clientName', 'location', 'ipAddress'];
+    const payload = req.body || {};
     const updateData = {};
-    for (const field of allowedFields) {
-      if (field in req.body) {
-        updateData[field] = req.body[field];
-      }
+
+    if (Object.prototype.hasOwnProperty.call(payload, 'clientName') && typeof payload.clientName !== 'undefined') {
+      updateData.clientName = payload.clientName;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(payload, 'location') && typeof payload.location !== 'undefined') {
+      updateData.location = payload.location;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(payload, 'ipAddress') && typeof payload.ipAddress !== 'undefined') {
+      updateData.ipAddress = payload.ipAddress;
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(payload, 'groups') ||
+      Object.prototype.hasOwnProperty.call(payload, 'groupId')
+    ) {
+      const source = Object.prototype.hasOwnProperty.call(payload, 'groups')
+        ? payload.groups
+        : payload.groupId;
+      updateData.groups = normalizeGroupIds(source);
     }
 
     const client = await Client.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
-    });
+    }).populate({ path: 'groups', select: 'groupName' });
 
     if (!client) {
       return res.status(404).json({ message: 'Cliente no encontrado' });
