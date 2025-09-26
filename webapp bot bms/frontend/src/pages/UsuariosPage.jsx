@@ -13,7 +13,7 @@ import EditIcon from '@mui/icons-material/Edit';
 
 export default function UsuariosPage() {
   const [users, setUsers] = useState([]);
-  const [newUser, setNewUser] = useState({ username: '', password: '', name: '', phoneNum: '', userType: '', groupId: '' });
+  const [newUser, setNewUser] = useState({ username: '', password: '', name: '', phoneNum: '', userType: '', groups: [] });
   const [groups, setGroups] = useState([]);
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
@@ -34,7 +34,7 @@ export default function UsuariosPage() {
     try {
       await createUser(newUser);
       await refreshUsers();
-      setNewUser({ username: '', password: '', name: '', phoneNum: '', userType: '', groupId: '' });
+      setNewUser({ username: '', password: '', name: '', phoneNum: '', userType: '', groups: [] });
       setError('');
     } catch (err) {
       const msg = err.response?.data?.message || 'Error al crear usuario';
@@ -53,6 +53,52 @@ export default function UsuariosPage() {
     }
   };
 
+  const normalizeId = (value) => {
+    if (!value) return null;
+    if (typeof value === 'object' && value !== null) {
+      if (value._id) {
+        const idValue = value._id;
+        return typeof idValue === 'string' ? idValue : idValue.toString?.() || null;
+      }
+      if (value.id) {
+        const idValue = value.id;
+        return typeof idValue === 'string' ? idValue : idValue.toString?.() || null;
+      }
+      return value.toString?.() || null;
+    }
+    return typeof value === 'string' ? value : value.toString?.() || null;
+  };
+
+  const extractGroupIds = (groupLike, fallback) => {
+    const source = Array.isArray(groupLike) && groupLike.length > 0
+      ? groupLike
+      : (typeof fallback !== 'undefined' ? [fallback] : []);
+    return source
+      .map((item) => {
+        if (!item) return null;
+        return normalizeId(item);
+      })
+      .filter(Boolean);
+  };
+
+  const getGroupName = (groupId) => {
+    const group = groups.find((g) => g._id === groupId);
+    return group ? group.groupName : groupId;
+  };
+
+  const ensureArray = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return value.split(',').filter(Boolean);
+    if (value) return [value];
+    return [];
+  };
+
+  const renderGroupNames = (groupIds) => {
+    const normalized = ensureArray(groupIds);
+    if (normalized.length === 0) return 'Sin grupos';
+    return normalized.map((id) => getGroupName(id)).join(', ');
+  };
+
   const handleEditOpen = (user) => {
     setEditError('');
     setEditUser({
@@ -62,7 +108,7 @@ export default function UsuariosPage() {
       name: user.name || '',
       phoneNum: user.phoneNum || '',
       userType: user.userType || '',
-      groupId: user.groupId?._id || user.groupId || '',
+      groups: extractGroupIds(user.groups, user.groupId),
     });
   };
 
@@ -83,7 +129,7 @@ export default function UsuariosPage() {
         name: editUser.name,
         phoneNum: editUser.phoneNum,
         userType: editUser.userType,
-        groupId: editUser.groupId,
+        groups: editUser.groups,
       });
       await refreshUsers();
       handleEditClose();
@@ -105,7 +151,7 @@ export default function UsuariosPage() {
               <TableCell>Nombre</TableCell>
               <TableCell>Teléfono</TableCell>
               <TableCell>Tipo</TableCell>
-              <TableCell>Grupo</TableCell>
+              <TableCell>Grupos</TableCell>
               <TableCell>Acciones</TableCell>
             </TableRow>
           </TableHead>
@@ -117,7 +163,7 @@ export default function UsuariosPage() {
                   <TableCell>{u.name}</TableCell>
                   <TableCell>{u.phoneNum}</TableCell>
                   <TableCell>{u.userType}</TableCell>
-                  <TableCell>{groups.find(g => g._id === u.groupId)?.groupName || u.groupId}</TableCell>
+                  <TableCell>{renderGroupNames(extractGroupIds(u.groups, u.groupId))}</TableCell>
                   <TableCell>
                     <IconButton
                       color="primary"
@@ -160,13 +206,15 @@ export default function UsuariosPage() {
               ))}
             </Select>
           </FormControl>
-          <FormControl sx={{ minWidth: 120 }}>
-            <InputLabel id="group-label">Grupo</InputLabel>
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel id="group-label">Grupos</InputLabel>
             <Select
               labelId="group-label"
-              value={newUser.groupId}
-              label="Grupo"
-              onChange={e => setNewUser(n => ({ ...n, groupId: e.target.value }))}
+              multiple
+              value={newUser.groups}
+              label="Grupos"
+              renderValue={(selected) => renderGroupNames(selected)}
+              onChange={e => setNewUser(n => ({ ...n, groups: ensureArray(e.target.value) }))}
             >
               {groups.map(g => (
                 <MenuItem key={g._id} value={g._id}>{g.groupName}</MenuItem>
@@ -232,12 +280,14 @@ export default function UsuariosPage() {
             </Select>
           </FormControl>
           <FormControl fullWidth>
-            <InputLabel id="edit-group-label">Grupo</InputLabel>
+            <InputLabel id="edit-group-label">Grupos</InputLabel>
             <Select
               labelId="edit-group-label"
-              label="Grupo"
-              value={editUser?.groupId || ''}
-              onChange={(e) => handleEditChange('groupId', e.target.value)}
+              label="Grupos"
+              multiple
+              value={editUser?.groups || []}
+              renderValue={(selected) => renderGroupNames(selected)}
+              onChange={(e) => handleEditChange('groups', ensureArray(e.target.value))}
             >
               {groups.map((g) => (
                 <MenuItem key={g._id} value={g._id}>{g.groupName}</MenuItem>
