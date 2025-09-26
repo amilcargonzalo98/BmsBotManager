@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchUsers, createUser, deleteUser, updateUser } from '../services/users';
 import { fetchGroups } from '../services/groups';
+import { truncateText } from '../utils/text';
 import {
   Container, Typography, TextField, Button, Box,
   Paper, Table, TableHead, TableRow, TableCell, TableBody,
@@ -158,12 +159,12 @@ export default function UsuariosPage() {
           <TableBody>
               {users.map(u => (
                 <TableRow key={u._id}>
-                  <TableCell>{u.username}</TableCell>
-                  <TableCell>{u.password}</TableCell>
-                  <TableCell>{u.name}</TableCell>
-                  <TableCell>{u.phoneNum}</TableCell>
-                  <TableCell>{u.userType}</TableCell>
-                  <TableCell>{renderGroupNames(extractGroupIds(u.groups, u.groupId))}</TableCell>
+                  <TableCell>{truncateText(u.username)}</TableCell>
+                  <TableCell>{truncateText(u.password)}</TableCell>
+                  <TableCell>{truncateText(u.name)}</TableCell>
+                  <TableCell>{truncateText(u.phoneNum)}</TableCell>
+                  <TableCell>{truncateText(u.userType)}</TableCell>
+                  <TableCell>{truncateText(renderGroupNames(extractGroupIds(u.groups, u.groupId)))}</TableCell>
                   <TableCell>
                     <IconButton
                       color="primary"
