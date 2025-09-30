@@ -3,23 +3,60 @@ import AutoReply, { sanitizeToken } from '../models/AutoReply.js';
 
 const populateConfig = [
   { path: 'groupId', select: 'groupName' },
-  { path: 'points.pointId', select: 'pointName pointId lastPresentValue' },
+  { path: 'points.pointId', select: 'pointName pointId lastPresentValue lastUpdate' },
 ];
+
+const allowedAttributes = ['lastPresentValue', 'lastUpdate', 'pointName'];
+const allowedOperators = ['==', '!=', '>', '>=', '<', '<='];
+
+const sanitizeTransformations = (transformations) => {
+  if (!Array.isArray(transformations)) return [];
+  return transformations
+    .map((rule) => {
+      if (
+        !rule ||
+        !allowedOperators.includes(rule.operator) ||
+        typeof rule.value === 'undefined' ||
+        typeof rule.output === 'undefined'
+      ) {
+        return null;
+      }
+      return {
+        operator: rule.operator,
+        value: rule.value.toString(),
+        output: rule.output.toString(),
+      };
+    })
+    .filter(Boolean);
+};
 
 const formatPointsPayload = (points) => {
   if (!Array.isArray(points)) return [];
   return points
     .filter((p) => p && p.pointId)
     .map((p) => {
-      const alias = (p.alias || '').toString().trim();
-      const token = sanitizeToken(p.token || alias);
+      const baseTokenSource = p.token || p.alias || '';
+      const token = sanitizeToken(baseTokenSource);
+      if (!token) return null;
+
+      const attribute = allowedAttributes.includes(p.attribute) ? p.attribute : 'lastPresentValue';
+      const fallback =
+        typeof p.fallback === 'string'
+          ? p.fallback
+          : typeof p.fallback === 'number'
+            ? p.fallback.toString()
+            : '';
+
       return {
-        alias: alias || token || '',
+        alias: token,
         token,
         pointId: p.pointId,
+        attribute,
+        transformations: sanitizeTransformations(p.transformations),
+        fallback,
       };
     })
-    .filter((p) => p.alias && p.token);
+    .filter(Boolean);
 };
 
 const handleDuplicateError = (res, err) => {

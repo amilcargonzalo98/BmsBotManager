@@ -10,11 +10,33 @@ const sanitizeToken = (value) => {
     .replace(/^_+|_+$/g, '');
 };
 
+const allowedAttributes = ['lastPresentValue', 'lastUpdate', 'pointName'];
+
+const transformationRuleSchema = new mongoose.Schema(
+  {
+    operator: {
+      type: String,
+      enum: ['==', '!=', '>', '>=', '<', '<='],
+      required: true,
+    },
+    value: { type: String, required: true },
+    output: { type: String, required: true },
+  },
+  { _id: false }
+);
+
 const autoReplyPointSchema = new mongoose.Schema(
   {
-    alias: { type: String, required: true },
+    alias: { type: String },
     token: { type: String, required: true },
     pointId: { type: mongoose.Schema.Types.ObjectId, ref: 'Point', required: true },
+    attribute: {
+      type: String,
+      enum: allowedAttributes,
+      default: 'lastPresentValue',
+    },
+    transformations: { type: [transformationRuleSchema], default: [] },
+    fallback: { type: String, default: '' },
   },
   { _id: false }
 );
@@ -42,17 +64,45 @@ autoReplySchema.pre('validate', function handleNormalize(next) {
     this.points = [];
   } else {
     this.points = this.points
-      .filter((p) => p && p.alias && p.pointId)
+      .filter((p) => p && p.pointId && (p.alias || p.token))
       .map((p) => {
-        const alias = p.alias.toString().trim();
+        const aliasRaw = p.alias || p.token;
+        const alias = aliasRaw ? aliasRaw.toString().trim() : '';
         const token = sanitizeToken(p.token || alias);
+        const attribute = allowedAttributes.includes(p.attribute) ? p.attribute : 'lastPresentValue';
+        const transformations = Array.isArray(p.transformations)
+          ? p.transformations
+              .filter((rule) =>
+                rule &&
+                typeof rule.output !== 'undefined' &&
+                typeof rule.value !== 'undefined' &&
+                ['==', '!=', '>', '>=', '<', '<='].includes(rule.operator),
+              )
+              .map((rule) => ({
+                operator: rule.operator,
+                value: rule.value.toString(),
+                output: rule.output.toString(),
+              }))
+          : [];
+        const fallback =
+          typeof p.fallback === 'string'
+            ? p.fallback
+            : typeof p.fallback === 'number'
+              ? p.fallback.toString()
+              : '';
+
+        if (!token) return null;
+
         return {
-          alias,
+          alias: alias || token,
           token,
           pointId: p.pointId,
+          attribute,
+          transformations,
+          fallback,
         };
       })
-      .filter((p) => p.token);
+      .filter(Boolean);
   }
 
   next();
