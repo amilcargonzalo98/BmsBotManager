@@ -12,6 +12,7 @@ import AlarmsPage from './pages/AlarmsPage';
 import TendenciasPage from './pages/TendenciasPage';
 import EventosPage from './pages/EventosPage';
 import PanelControlPage from './pages/PanelControlPage';
+import AutoRepliesPage from './pages/AutoRepliesPage';
 import Layout from './components/Layout';
 import { useAuth } from './context/AuthContext';
 
@@ -120,6 +121,16 @@ export default function App() {
           <PrivateRoute>
             <Layout>
               <WhatsappPage />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/respuestas-automaticas"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <AutoRepliesPage />
             </Layout>
           </PrivateRoute>
         }

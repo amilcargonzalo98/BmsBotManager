@@ -10,6 +10,7 @@ import AlarmIcon from '@mui/icons-material/NotificationsActive';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import QuickreplyIcon from '@mui/icons-material/Quickreply';
 import { NavLink } from 'react-router-dom';
 
 const drawerWidth = 240;
@@ -64,6 +65,10 @@ export default function Sidebar() {
         <ListItemButton component={NavLink} to="/whatsapp" activeClassName="Mui-selected" exact>
           <ListItemIcon><WhatsAppIcon /></ListItemIcon>
           <ListItemText primary="WhatsApp" />
+        </ListItemButton>
+        <ListItemButton component={NavLink} to="/respuestas-automaticas" activeClassName="Mui-selected" exact>
+          <ListItemIcon><QuickreplyIcon /></ListItemIcon>
+          <ListItemText primary="Respuestas automáticas" />
         </ListItemButton>
       </List>
     </Drawer>

@@ -1,5 +1,8 @@
 import TwilioConfig from '../models/TwilioConfig.js';
 import TwilioMessage from '../models/TwilioMessage.js';
+import User from '../models/User.js';
+import AutoReply from '../models/AutoReply.js';
+import { sendWhatsApp } from '../services/twilioService.js';
 
 export const getConfig = async (req, res) => {
   const config = await TwilioConfig.findOne();
@@ -80,6 +83,9 @@ export const twilioWebhook = async (req, res) => {
         body: Body,
         direction: 'inbound'
       });
+      handleAutoReply(From, Body).catch((err) => {
+        console.error('Error enviando respuesta automática', err);
+      });
     }
     res.set('Content-Type', 'text/plain');
     res.send('');
@@ -122,3 +128,84 @@ export const deleteChat = async (req, res) => {
     res.status(500).json({ message: 'Error al eliminar el chat' });
   }
 };
+
+const cleanPhone = (value) => {
+  if (!value) return '';
+  return value.toString().replace(/^whatsapp:/i, '').trim();
+};
+
+const replacePlaceholders = (template, replyPoints) => {
+  if (typeof template !== 'string') return '';
+  let result = template;
+  if (Array.isArray(replyPoints)) {
+    replyPoints.forEach((point) => {
+      if (!point || !point.token) return;
+      const placeholderVariants = new Set();
+      placeholderVariants.add(`{{${point.token}}}`);
+      placeholderVariants.add(`{${point.token}}`);
+      if (point.alias) {
+        const aliasTrimmed = point.alias.trim();
+        if (aliasTrimmed) {
+          placeholderVariants.add(`{{${aliasTrimmed}}}`);
+          placeholderVariants.add(`{${aliasTrimmed}}`);
+        }
+      }
+
+      const pointValue = (() => {
+        if (point.pointId && Object.prototype.hasOwnProperty.call(point.pointId, 'lastPresentValue')) {
+          const value = point.pointId.lastPresentValue;
+          return value === null || value === undefined ? '' : String(value);
+        }
+        return '';
+      })();
+
+      placeholderVariants.forEach((placeholder) => {
+        if (placeholder && result.includes(placeholder)) {
+          result = result.split(placeholder).join(pointValue);
+        }
+      });
+    });
+  }
+  return result;
+};
+
+async function handleAutoReply(from, body) {
+  const normalizedBody = (body || '').toString().trim().toLowerCase();
+  if (!normalizedBody) return;
+
+  const phone = cleanPhone(from);
+  if (!phone) return;
+
+  const user = await User.findOne({ phoneNum: phone }).select('groups').lean();
+  if (!user || !Array.isArray(user.groups) || user.groups.length === 0) return;
+
+  const groupIds = user.groups.map((g) => {
+    if (!g) return null;
+    if (typeof g === 'string') return g;
+    if (g._id) return g._id.toString();
+    try {
+      return g.toString();
+    } catch (err) {
+      return null;
+    }
+  }).filter(Boolean);
+
+  if (groupIds.length === 0) return;
+
+  const reply = await AutoReply.findOne({
+    groupId: { $in: groupIds },
+    normalizedKeyword: normalizedBody,
+    isActive: true,
+  })
+    .sort({ updatedAt: -1 })
+    .populate({ path: 'points.pointId', select: 'pointName lastPresentValue pointId' })
+    .lean();
+
+  if (!reply) return;
+
+  const messageBody = replacePlaceholders(reply.responseBody || '', reply.points);
+  const finalMessage = messageBody.trim();
+  if (!finalMessage) return;
+
+  await sendWhatsApp(phone, finalMessage);
+}
