@@ -3,10 +3,7 @@ import crypto from 'crypto';
 import Point from '../models/Point.js';
 import Alarm from '../models/Alarm.js';
 import Group from '../models/Group.js';
-import {
-  sendClientOfflineWhatsApp,
-  sendClientOnlineWhatsApp,
-} from '../services/twilioService.js';
+import { sendClientOnlineWhatsApp } from '../services/twilioService.js';
 
 function generateApiKey() {
   return crypto.randomBytes(32).toString('hex');
@@ -59,9 +56,7 @@ export const getClients = async (req, res) => {
           }
         };
 
-        if (client.connectionStatus === true && !connected) {
-          await notifyUsers(sendClientOfflineWhatsApp, 'desconexión');
-        } else if (client.connectionStatus === false && connected) {
+        if (client.connectionStatus === false && connected) {
           await notifyUsers(sendClientOnlineWhatsApp, 'reconexión');
         }
 
