@@ -9,6 +9,35 @@ import { sendAlarmWhatsApp } from '../services/twilioService.js';
 
 const LOG_INTERVAL_MS = 15 * 60 * 1000;
 
+const truncatePresentValue = (value) => {
+  if (value === null || value === undefined) return value;
+
+  const normalizeNumeric = (raw) => {
+    const factor = 100;
+    return Math.trunc(raw * factor) / factor;
+  };
+
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return value;
+    return normalizeNumeric(value);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    const normalized = Number(trimmed.replace(',', '.'));
+    if (!Number.isFinite(normalized)) return trimmed;
+    return normalizeNumeric(normalized);
+  }
+
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) {
+    return normalizeNumeric(numeric);
+  }
+
+  return value;
+};
+
 export const reportState = async (req, res) => {
   try {
     const { apiKey, points } = req.body;
@@ -39,6 +68,7 @@ export const reportState = async (req, res) => {
 
     for (const p of points) {
       const { pointName, ipAddress, pointType, pointId, presentValue } = p;
+      const sanitizedPresentValue = truncatePresentValue(presentValue);
 
       let point = await Point.findOne({ pointName, clientId: client._id });
       const now = new Date();
@@ -50,14 +80,14 @@ export const reportState = async (req, res) => {
           pointType,
           pointId,
           clientId: client._id,
-          lastPresentValue: presentValue,
+          lastPresentValue: sanitizedPresentValue,
           lastUpdate: now,
         });
       } else {
         point.ipAddress = ipAddress;
         point.pointType = pointType;
         point.pointId = pointId;
-        point.lastPresentValue = presentValue;
+        point.lastPresentValue = sanitizedPresentValue;
         point.lastUpdate = now;
         await point.save();
       }
@@ -70,16 +100,22 @@ export const reportState = async (req, res) => {
         !lastLog || now.getTime() - new Date(lastLog.timestamp).getTime() >= LOG_INTERVAL_MS;
 
       if (shouldLog) {
-        await DataLog.create({ pointId: point._id, presentValue, timestamp: now });
+        await DataLog.create({
+          pointId: point._id,
+          presentValue: sanitizedPresentValue,
+          timestamp: now,
+        });
       }
 
       const alarms = await Alarm.find({ pointId: point._id });
       for (const alarm of alarms) {
         let triggered = false;
-        if (alarm.conditionType === 'true') triggered = Boolean(presentValue) === true;
-        else if (alarm.conditionType === 'false') triggered = Boolean(presentValue) === false;
-        else if (alarm.conditionType === 'gt') triggered = Number(presentValue) >= Number(alarm.threshold);
-        else if (alarm.conditionType === 'lt') triggered = Number(presentValue) <= Number(alarm.threshold);
+        if (alarm.conditionType === 'true') triggered = Boolean(sanitizedPresentValue) === true;
+        else if (alarm.conditionType === 'false') triggered = Boolean(sanitizedPresentValue) === false;
+        else if (alarm.conditionType === 'gt')
+          triggered = Number(sanitizedPresentValue) >= Number(alarm.threshold);
+        else if (alarm.conditionType === 'lt')
+          triggered = Number(sanitizedPresentValue) <= Number(alarm.threshold);
 
         if (triggered) {
           if (!alarm.active) {
@@ -87,7 +123,7 @@ export const reportState = async (req, res) => {
               await Event.create({
                 eventType: 'Alarm',
                 pointId: point._id,
-                presentValue,
+                presentValue: sanitizedPresentValue,
                 groupId: point.groupId || undefined,
               });
             } catch (e) {
