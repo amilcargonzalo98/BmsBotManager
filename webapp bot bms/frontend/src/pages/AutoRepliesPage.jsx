@@ -42,6 +42,27 @@ const emojiPalette = [
   '🔥', '📊', '📈', '🕒', '📅', '🔧', '💡', '📍', '🚨', '📞',
 ];
 
+const attributeOptions = [
+  { value: 'lastPresentValue', label: 'Último valor reportado' },
+  { value: 'lastUpdate', label: 'Fecha de última actualización' },
+  { value: 'pointName', label: 'Nombre del punto' },
+];
+
+const attributeLabels = {
+  lastPresentValue: 'Último valor',
+  lastUpdate: 'Última actualización',
+  pointName: 'Nombre del punto',
+};
+
+const operatorOptions = [
+  { value: '==', label: 'Igual a' },
+  { value: '!=', label: 'Distinto de' },
+  { value: '>', label: 'Mayor que' },
+  { value: '>=', label: 'Mayor o igual que' },
+  { value: '<', label: 'Menor que' },
+  { value: '<=', label: 'Menor o igual que' },
+];
+
 const defaultForm = {
   id: null,
   groupId: '',
@@ -49,6 +70,18 @@ const defaultForm = {
   responseBody: '',
   isActive: true,
   variables: [],
+};
+
+const buildDefaultVariable = (index) => {
+  const tokenBase = `variable_${index + 1}`;
+  const token = sanitizeToken(tokenBase) || tokenBase;
+  return {
+    token,
+    pointId: '',
+    attribute: 'lastPresentValue',
+    transformations: [],
+    fallback: '',
+  };
 };
 
 const sanitizeToken = (value) => {
@@ -123,9 +156,17 @@ export default function AutoRepliesPage() {
         isActive: reply.isActive !== undefined ? reply.isActive : true,
         variables: Array.isArray(reply.points)
           ? reply.points.map((p, index) => ({
-            alias: p.alias || `Variable ${index + 1}`,
             token: p.token || sanitizeToken(p.alias || `variable_${index + 1}`),
             pointId: typeof p.pointId === 'object' ? p.pointId?._id || p.pointId?.id : p.pointId,
+            attribute: p.attribute || 'lastPresentValue',
+            transformations: Array.isArray(p.transformations)
+              ? p.transformations.map((rule) => ({
+                operator: rule.operator || '==',
+                value: rule.value ?? '',
+                output: rule.output ?? '',
+              }))
+              : [],
+            fallback: p.fallback ?? '',
           }))
           : [],
       });
@@ -159,25 +200,68 @@ export default function AutoRepliesPage() {
   };
 
   const handleVariablePointChange = (index, option) => {
-    setFormState((prev) => {
-      const variables = prev.variables.map((variable, idx) =>
-        idx === index ? { ...variable, pointId: option ? option.value : '' } : variable,
-      );
-      return { ...prev, variables };
-    });
-  };
+  setFormState((prev) => {
+    const variables = prev.variables.map((variable, idx) =>
+      idx === index ? { ...variable, pointId: option ? option.value : '' } : variable,
+    );
+    return { ...prev, variables };
+  });
+};
 
-  const handleAddVariable = () => {
-    setFormState((prev) => {
-      const nextIndex = prev.variables.length + 1;
-      const alias = `Variable ${nextIndex}`;
-      const token = sanitizeToken(alias) || `variable_${nextIndex}`;
+  const handleAddTransformation = (variableIndex) => {
+  setFormState((prev) => {
+    const variables = prev.variables.map((variable, idx) => {
+      if (idx !== variableIndex) return variable;
+      const transformations = Array.isArray(variable.transformations)
+        ? [...variable.transformations]
+        : [];
       return {
-        ...prev,
-        variables: [...prev.variables, { alias, token, pointId: '' }],
+        ...variable,
+        transformations: [...transformations, { operator: '==', value: '', output: '' }],
       };
     });
-  };
+    return { ...prev, variables };
+  });
+};
+
+  const handleTransformationChange = (variableIndex, transformationIndex, field, value) => {
+  setFormState((prev) => {
+    const variables = prev.variables.map((variable, idx) => {
+      if (idx !== variableIndex) return variable;
+      const transformations = Array.isArray(variable.transformations)
+        ? variable.transformations.map((rule, rIdx) => {
+            if (rIdx !== transformationIndex) return rule;
+            return { ...rule, [field]: value };
+          })
+        : [];
+      return { ...variable, transformations };
+    });
+    return { ...prev, variables };
+  });
+};
+
+  const handleRemoveTransformation = (variableIndex, transformationIndex) => {
+  setFormState((prev) => {
+    const variables = prev.variables.map((variable, idx) => {
+      if (idx !== variableIndex) return variable;
+      const transformations = Array.isArray(variable.transformations)
+        ? variable.transformations.filter((_, rIdx) => rIdx !== transformationIndex)
+        : [];
+      return { ...variable, transformations };
+    });
+    return { ...prev, variables };
+  });
+};
+
+  const handleAddVariable = () => {
+  setFormState((prev) => {
+    const nextIndex = prev.variables.length;
+    return {
+      ...prev,
+      variables: [...prev.variables, buildDefaultVariable(nextIndex)],
+    };
+  });
+};
 
   const handleRemoveVariable = (index) => {
     setFormState((prev) => ({
@@ -226,14 +310,52 @@ export default function AutoRepliesPage() {
       return;
     }
 
-    const cleanedVariables = formState.variables.map((variable) => ({
-      alias: (variable.alias || '').trim(),
-      token: sanitizeToken(variable.token || variable.alias),
-      pointId: variable.pointId,
-    })).filter((variable) => variable.alias && variable.token && variable.pointId);
+    const cleanedVariables = formState.variables
+      .map((variable) => {
+        const token = sanitizeToken(variable.token || '');
+        const pointId = variable.pointId;
+        if (!token || !pointId) return null;
+
+        const attribute = attributeOptions.some((option) => option.value === variable.attribute)
+          ? variable.attribute
+          : 'lastPresentValue';
+
+        const transformations = Array.isArray(variable.transformations)
+          ? variable.transformations
+              .map((rule) => {
+                const operator = operatorOptions.some((option) => option.value === rule.operator)
+                  ? rule.operator
+                  : '==';
+                const value = rule.value ?? '';
+                const output = rule.output ?? '';
+                if (value === '' || output === '') return null;
+                return {
+                  operator,
+                  value: value.toString(),
+                  output: output.toString(),
+                };
+              })
+              .filter(Boolean)
+          : [];
+
+        const fallback = (() => {
+          if (typeof variable.fallback === 'string') return variable.fallback;
+          if (typeof variable.fallback === 'number') return variable.fallback.toString();
+          return '';
+        })();
+
+        return {
+          token,
+          pointId,
+          attribute,
+          transformations,
+          fallback,
+        };
+      })
+      .filter(Boolean);
 
     if (formState.variables.length > 0 && cleanedVariables.length !== formState.variables.length) {
-      setFormError('Revisa las variables: todas deben tener nombre, placeholder y punto asignado.');
+      setFormError('Revisa las variables: todas deben tener placeholder, punto y atributo asignado.');
       return;
     }
 
@@ -342,13 +464,28 @@ export default function AutoRepliesPage() {
                   <TableCell>{reply.groupId?.groupName || reply.groupId?.name || 'Sin grupo'}</TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                      {(reply.points || []).map((point, index) => (
-                        <Chip
-                          key={`${reply._id || reply.id}-point-${index}`}
-                          label={`${point.alias}${point.pointId?.pointName ? ` → ${point.pointId.pointName}` : ''}`}
-                          size="small"
-                        />
-                      ))}
+                      {(reply.points || []).map((point, index) => {
+                        const attributeLabel = attributeLabels[point.attribute] || attributeLabels.lastPresentValue;
+                        const pointName = point.pointId?.pointName;
+                        const translationsCount = Array.isArray(point.transformations)
+                          ? point.transformations.length
+                          : 0;
+                        const labelParts = [
+                          point.token ? `{{${point.token}}}` : 'Variable',
+                          pointName ? `→ ${pointName}` : null,
+                          attributeLabel ? `(${attributeLabel})` : null,
+                          translationsCount > 0
+                            ? `${translationsCount} ${translationsCount === 1 ? 'regla' : 'reglas'}`
+                            : null,
+                        ].filter(Boolean);
+                        return (
+                          <Chip
+                            key={`${reply._id || reply.id}-point-${index}`}
+                            label={labelParts.join(' ')}
+                            size="small"
+                          />
+                        );
+                      })}
                     </Stack>
                   </TableCell>
                   <TableCell>{reply.isActive ? 'Sí' : 'No'}</TableCell>
@@ -448,50 +585,145 @@ export default function AutoRepliesPage() {
                 Variables dinámicas
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Asocia puntos y define un placeholder para usar en el mensaje (por ejemplo {`{{variable_1}}`}).
+                Asocia puntos, elige qué dato quieres usar y define el placeholder para insertarlo en el mensaje (por ejemplo {`{{variable_1}}`}).
               </Typography>
               <Stack spacing={2}>
                 {formState.variables.map((variable, index) => {
                   const selectedOption = pointOptions.find((option) => option.value === variable.pointId) || null;
                   return (
-                    <Box
-                      key={`variable-${index}`}
-                      sx={{
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr auto auto' },
-                        gap: 1,
-                        alignItems: 'center',
-                      }}
-                    >
-                      <TextField
-                        label="Nombre de la variable"
-                        value={variable.alias}
-                        onChange={(event) => handleVariableChange(index, 'alias', event.target.value)}
-                      />
-                      <TextField
-                        label="Placeholder"
-                        value={variable.token}
-                        onChange={(event) => handleVariableChange(index, 'token', event.target.value)}
-                        helperText={`Se insertará como ${buildPlaceholder(variable.token)}`}
-                      />
-                      <Autocomplete
-                        options={pointOptions}
-                        value={selectedOption}
-                        onChange={(_event, option) => handleVariablePointChange(index, option)}
-                        getOptionLabel={(option) => option.helper || option.label}
-                        renderInput={(params) => <TextField {...params} label="Punto" />}
-                      />
-                      <Button
-                        variant="outlined"
-                        onClick={() => handleInsertPlaceholder(variable.token)}
-                        disabled={!variable.token}
-                      >
-                        Insertar en mensaje
-                      </Button>
-                      <IconButton color="error" onClick={() => handleRemoveVariable(index)}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
+                    <Paper key={`variable-${index}`} variant="outlined" sx={{ p: 2 }}>
+                      <Stack spacing={2}>
+                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+                          <TextField
+                            label="Placeholder"
+                            value={variable.token}
+                            onChange={(event) => handleVariableChange(index, 'token', event.target.value)}
+                            helperText={`Se insertará como ${buildPlaceholder(variable.token)}`}
+                            fullWidth
+                          />
+                          <Autocomplete
+                            options={pointOptions}
+                            value={selectedOption}
+                            onChange={(_event, option) => handleVariablePointChange(index, option)}
+                            getOptionLabel={(option) => option.helper || option.label}
+                            renderInput={(params) => <TextField {...params} label="Punto" />}
+                            sx={{ minWidth: { md: 240 } }}
+                          />
+                          <FormControl sx={{ minWidth: { md: 220 } }} fullWidth>
+                            <InputLabel id={`attribute-label-${index}`}>Atributo</InputLabel>
+                            <Select
+                              labelId={`attribute-label-${index}`}
+                              label="Atributo"
+                              value={variable.attribute || 'lastPresentValue'}
+                              onChange={(event) => handleVariableChange(index, 'attribute', event.target.value)}
+                            >
+                              {attributeOptions.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Stack>
+
+                        <Stack
+                          direction={{ xs: 'column', md: 'row' }}
+                          spacing={1}
+                          alignItems={{ md: 'center' }}
+                        >
+                          <TextField
+                            label="Valor por defecto"
+                            value={variable.fallback}
+                            onChange={(event) => handleVariableChange(index, 'fallback', event.target.value)}
+                            helperText="Se usará cuando no exista dato o ninguna condición aplique"
+                            fullWidth
+                          />
+                          <Button
+                            variant="outlined"
+                            onClick={() => handleInsertPlaceholder(variable.token)}
+                            disabled={!variable.token}
+                          >
+                            Insertar en mensaje
+                          </Button>
+                          <IconButton color="error" onClick={() => handleRemoveVariable(index)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </Stack>
+
+                        <Box>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems="center"
+                            justifyContent="space-between"
+                            sx={{ mb: variable.transformations?.length ? 1 : 0 }}
+                          >
+                            <Typography variant="subtitle2">Traducciones condicionales</Typography>
+                            <Button size="small" onClick={() => handleAddTransformation(index)}>
+                              Agregar traducción
+                            </Button>
+                          </Stack>
+                          {(!variable.transformations || variable.transformations.length === 0) && (
+                            <Typography variant="body2" color="text.secondary">
+                              Puedes traducir el valor del punto a texto agregando condiciones.
+                            </Typography>
+                          )}
+                          {variable.transformations && variable.transformations.length > 0 && (
+                            <Stack spacing={1}>
+                              {variable.transformations.map((rule, ruleIndex) => (
+                                <Stack
+                                  key={`variable-${index}-rule-${ruleIndex}`}
+                                  direction={{ xs: 'column', md: 'row' }}
+                                  spacing={1}
+                                  alignItems={{ md: 'center' }}
+                                >
+                                  <FormControl sx={{ minWidth: 140 }}>
+                                    <InputLabel id={`operator-label-${index}-${ruleIndex}`}>Operador</InputLabel>
+                                    <Select
+                                      labelId={`operator-label-${index}-${ruleIndex}`}
+                                      label="Operador"
+                                      value={rule.operator || '=='}
+                                      onChange={(event) =>
+                                        handleTransformationChange(index, ruleIndex, 'operator', event.target.value)
+                                      }
+                                    >
+                                      {operatorOptions.map((option) => (
+                                        <MenuItem key={option.value} value={option.value}>
+                                          {option.label}
+                                        </MenuItem>
+                                      ))}
+                                    </Select>
+                                  </FormControl>
+                                  <TextField
+                                    label="Valor a comparar"
+                                    value={rule.value ?? ''}
+                                    onChange={(event) =>
+                                      handleTransformationChange(index, ruleIndex, 'value', event.target.value)
+                                    }
+                                    fullWidth
+                                  />
+                                  <TextField
+                                    label="Texto a mostrar"
+                                    value={rule.output ?? ''}
+                                    onChange={(event) =>
+                                      handleTransformationChange(index, ruleIndex, 'output', event.target.value)
+                                    }
+                                    fullWidth
+                                  />
+                                  <IconButton
+                                    color="error"
+                                    onClick={() => handleRemoveTransformation(index, ruleIndex)}
+                                    sx={{ alignSelf: { xs: 'flex-end', md: 'center' } }}
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Stack>
+                              ))}
+                            </Stack>
+                          )}
+                        </Box>
+                      </Stack>
+                    </Paper>
                   );
                 })}
               </Stack>

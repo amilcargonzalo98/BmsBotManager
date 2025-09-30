@@ -134,15 +134,137 @@ const cleanPhone = (value) => {
   return value.toString().replace(/^whatsapp:/i, '').trim();
 };
 
+const ALLOWED_ATTRIBUTES = ['lastPresentValue', 'lastUpdate', 'pointName'];
+const ALLOWED_OPERATORS = ['==', '!=', '>', '>=', '<', '<='];
+
+const isNumeric = (value) => {
+  if (value === null || value === undefined) return false;
+  const num = Number(value);
+  return Number.isFinite(num);
+};
+
+const normalizeDate = (value) => {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toISOString();
+};
+
+const compareValues = (actual, expected, operator) => {
+  const actualIsNumeric = isNumeric(actual);
+  const expectedIsNumeric = isNumeric(expected);
+
+  if (actualIsNumeric && expectedIsNumeric) {
+    const a = Number(actual);
+    const b = Number(expected);
+    switch (operator) {
+      case '==':
+        return a === b;
+      case '!=':
+        return a !== b;
+      case '>':
+        return a > b;
+      case '>=':
+        return a >= b;
+      case '<':
+        return a < b;
+      case '<=':
+        return a <= b;
+      default:
+        return false;
+    }
+  }
+
+  const aStr = actual === null || actual === undefined ? '' : String(actual).toLowerCase();
+  const bStr = expected === null || expected === undefined ? '' : String(expected).toLowerCase();
+
+  switch (operator) {
+    case '==':
+      return aStr === bStr;
+    case '!=':
+      return aStr !== bStr;
+    case '>':
+      return aStr > bStr;
+    case '>=':
+      return aStr >= bStr;
+    case '<':
+      return aStr < bStr;
+    case '<=':
+      return aStr <= bStr;
+    default:
+      return false;
+  }
+};
+
+const formatValueWithTransformations = (rawValue, attribute, transformations, fallback) => {
+  const normalizedAttribute = ALLOWED_ATTRIBUTES.includes(attribute) ? attribute : 'lastPresentValue';
+  const effectiveFallback = typeof fallback === 'string' ? fallback : fallback ? String(fallback) : '';
+
+  if (Array.isArray(transformations) && transformations.length > 0) {
+    let matched = false;
+    for (const rule of transformations) {
+      if (
+        !rule ||
+        !ALLOWED_OPERATORS.includes(rule.operator) ||
+        typeof rule.value === 'undefined' ||
+        typeof rule.output === 'undefined'
+      ) {
+        continue;
+      }
+      if (compareValues(rawValue, rule.value, rule.operator)) {
+        matched = true;
+        return rule.output.toString();
+      }
+    }
+    if (!matched && effectiveFallback) {
+      return effectiveFallback;
+    }
+  }
+
+  if (rawValue === null || rawValue === undefined || rawValue === '') {
+    return effectiveFallback;
+  }
+
+  if (normalizedAttribute === 'lastUpdate') {
+    return normalizeDate(rawValue);
+  }
+
+  return String(rawValue);
+};
+
+const extractPointValue = (point) => {
+  if (!point || !point.pointId) return { value: '', attribute: 'lastPresentValue' };
+
+  const attribute = ALLOWED_ATTRIBUTES.includes(point.attribute) ? point.attribute : 'lastPresentValue';
+  const source = point.pointId;
+
+  if (attribute === 'pointName') {
+    return { value: source.pointName ?? '', attribute };
+  }
+
+  if (attribute === 'lastUpdate') {
+    return { value: source.lastUpdate ?? '', attribute };
+  }
+
+  const hasLastPresentValue = Object.prototype.hasOwnProperty.call(source, 'lastPresentValue');
+  if (hasLastPresentValue) {
+    return { value: source.lastPresentValue ?? '', attribute };
+  }
+
+  return { value: '', attribute };
+};
+
 const replacePlaceholders = (template, replyPoints) => {
   if (typeof template !== 'string') return '';
   let result = template;
   if (Array.isArray(replyPoints)) {
     replyPoints.forEach((point) => {
       if (!point || !point.token) return;
+
       const placeholderVariants = new Set();
       placeholderVariants.add(`{{${point.token}}}`);
       placeholderVariants.add(`{${point.token}}`);
+
       if (point.alias) {
         const aliasTrimmed = point.alias.trim();
         if (aliasTrimmed) {
@@ -151,17 +273,17 @@ const replacePlaceholders = (template, replyPoints) => {
         }
       }
 
-      const pointValue = (() => {
-        if (point.pointId && Object.prototype.hasOwnProperty.call(point.pointId, 'lastPresentValue')) {
-          const value = point.pointId.lastPresentValue;
-          return value === null || value === undefined ? '' : String(value);
-        }
-        return '';
-      })();
+      const { value, attribute } = extractPointValue(point);
+      const formattedValue = formatValueWithTransformations(
+        value,
+        attribute,
+        point.transformations,
+        point.fallback,
+      );
 
       placeholderVariants.forEach((placeholder) => {
         if (placeholder && result.includes(placeholder)) {
-          result = result.split(placeholder).join(pointValue);
+          result = result.split(placeholder).join(formattedValue ?? '');
         }
       });
     });
@@ -198,7 +320,7 @@ async function handleAutoReply(from, body) {
     isActive: true,
   })
     .sort({ updatedAt: -1 })
-    .populate({ path: 'points.pointId', select: 'pointName lastPresentValue pointId' })
+    .populate({ path: 'points.pointId', select: 'pointName lastPresentValue lastUpdate pointId' })
     .lean();
 
   if (!reply) return;
